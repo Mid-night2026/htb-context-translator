@@ -280,6 +280,7 @@
               });
 
               matchItem.element.innerHTML = htmlFinal;
+              matchItem.element.classList.add('htb-fade-in');
               matchItem.element.dataset.htbTranslatedHtml = htmlFinal;
               matchItem.element.dataset.htbTranslated = 'true';
               
@@ -459,11 +460,13 @@
   // Inicialização no DOM
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
+      injetarEstilosPage();
       injetarWidget();
       monitorarNavegacao();
     });
   } else {
-    injetarWidget();
+    injetarEstilosPage();
+      injetarWidget();
     monitorarNavegacao();
   }
 
