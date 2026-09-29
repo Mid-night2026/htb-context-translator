@@ -115,6 +115,12 @@
   }
 
   // Encontra os elementos de texto do curso HTB
+  
+  function gerarChaveElemento(el) {
+    const textBase = el.innerText.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '');
+    return 'htb_cache_' + btoa(unescape(encodeURIComponent(location.pathname + '_' + textBase))).substring(0, 30);
+  }
+
   function coletarElementosTraduziveis() {
     const container = document.querySelector('.module-content article') ||
                       document.querySelector('.module-content') ||
@@ -125,15 +131,33 @@
     if (!container) return [];
 
     const seletores = 'h1, h2, h3, h4, h5, h6, p, li, blockquote, td, th';
-    const elementos = Array.from(container.querySelectorAll(seletores));
-
-    return elementos.filter(el => {
-      if (el.closest('pre') || el.closest('code') || el.closest('#htb-translator-widget')) return false;
-      if (el.closest('.terminal, .xterm, .console, .pwnbox-terminal')) return false;
-      if (el.closest('.question-box, form, button, nav, footer')) return false;
+    let elementos = Array.from(container.querySelectorAll(seletores));
+    let filtrados = [];
+    
+    elementos.forEach(el => {
+      if (el.closest('pre') || el.closest('code') || el.closest('#htb-translator-widget')) return;
+      if (el.closest('.terminal, .xterm, .console, .pwnbox-terminal')) return;
+      if (el.closest('.question-box, form, button, nav, footer')) return;
+      if (el.dataset.htbTranslated) return;
+      
       const texto = el.innerText.trim();
-      return texto.length > 5;
+      if (texto.length <= 5) return;
+      
+      const cacheKey = gerarChaveElemento(el);
+      const cachedHtml = sessionStorage.getItem(cacheKey);
+      
+      if (cachedHtml) {
+        if (!el.dataset.htbOriginalHtml) el.dataset.htbOriginalHtml = el.innerHTML;
+        el.innerHTML = cachedHtml;
+        el.dataset.htbTranslatedHtml = cachedHtml;
+        el.dataset.htbTranslated = 'true';
+        return; 
+      }
+      
+      filtrados.push(el);
     });
+    
+    return filtrados;
   }
 
   // Obtém chave ativa para fallback direto se runtime falhar
