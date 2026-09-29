@@ -1,5 +1,9 @@
 name: Security Scan
 on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   scan:
     runs-on: ubuntu-latest
