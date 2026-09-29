@@ -15,7 +15,7 @@ Se você encontrar uma vulnerabilidade de segurança neste projeto, **NÃO abra 
 
 ### Como reportar
 
-1. **Método preferido:** Use o botão **"Report a vulnerability"** na aba [Security](https://github.com/Mid-night2026/extensao_traductor/security) deste repositório. O GitHub mantém o relatório privado até a correção ser publicada.
+1. **Método preferido:** Use o botão **"Report a vulnerability"** na aba [Security](https://github.com/Mid-night2026/htb-context-translator/security) deste repositório. O GitHub mantém o relatório privado até a correção ser publicada.
 
 2. **Método alternativo:** Envie um e-mail para o mantenedor descrevendo:
    - Descrição da vulnerabilidade

@@ -20,15 +20,15 @@ Este documento cobre a instalação, configuração e uso detalhado da extensão
 
 ```bash
 # Clone o repositório
-git clone https://github.com/Mid-night2026/extensao_traductor.git
+git clone https://github.com/Mid-night2026/htb-context-translator.git
 
 # Acesse a pasta do projeto
-cd extensao_traductor
+cd htb-context-translator
 ```
 
 ### Método 2: Download Direto
 
-1. Acesse: https://github.com/Mid-night2026/extensao_traductor
+1. Acesse: https://github.com/Mid-night2026/htb-context-translator
 2. Clique no botão verde **"Code"** → **"Download ZIP"**.
 3. Extraia o arquivo ZIP.
 
@@ -182,7 +182,7 @@ A IA é instruída a **manter em inglês** os seguintes tipos de termos sem trad
 ## 7. Atualizando a Extensão
 
 ```bash
-cd extensao_traductor/
+cd htb-context-translator/
 git pull origin main
 ```
 

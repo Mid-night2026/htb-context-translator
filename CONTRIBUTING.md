@@ -12,7 +12,7 @@ Ao contribuir, você concorda em manter um ambiente respeitoso e colaborativo. S
 
 ## 🐛 Reportando Bugs
 
-1. Verifique se o bug já foi reportado nas [Issues](https://github.com/Mid-night2026/extensao_traductor/issues).
+1. Verifique se o bug já foi reportado nas [Issues](https://github.com/Mid-night2026/htb-context-translator/issues).
 2. Se não, abra uma nova issue com:
    - **Título claro e descritivo**
    - **Passos para reproduzir** o problema
@@ -39,8 +39,8 @@ Abra uma issue com a tag `enhancement` descrevendo:
 1. **Fork** o repositório.
 2. **Clone** o seu fork:
    ```bash
-   git clone https://github.com/SEU_USUARIO/extensao_traductor.git
-   cd extensao_traductor
+   git clone https://github.com/SEU_USUARIO/htb-context-translator.git
+   cd htb-context-translator
    ```
 3. **Crie uma branch** descritiva:
    ```bash

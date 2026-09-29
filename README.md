@@ -117,8 +117,8 @@ A extensão usa IA generativa (Google Gemini) com um **prompt especializado em s
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/Mid-night2026/extensao_traductor.git
-   cd extensao_traductor
+   git clone https://github.com/Mid-night2026/htb-context-translator.git
+   cd htb-context-translator
    ```
 
 2. **Abra o Chrome e acesse:**
@@ -264,7 +264,7 @@ Esta extensão adota o modelo **BYOK (Bring Your Own Key)**: cada usuário forne
 ## 📁 Estrutura do Projeto
 
 ```text
-extensao_traductor/
+htb-context-translator/
 ├── README.md                        # Esta documentação
 ├── INSTRUCTIONS.md                  # Guia detalhado de instalação e uso
 ├── SECURITY.md                      # Política de segurança e chaves de API
