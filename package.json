@@ -1,0 +1,12 @@
+{
+  "name": "htb-context-translator-tests",
+  "private": true,
+  "version": "1.3.0",
+  "scripts": {
+    "test": "node --test tests/extension.test.cjs",
+    "test:python": "python3 -m unittest discover -s tests -p 'test_*.py'"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.63.0"
+  }
+}

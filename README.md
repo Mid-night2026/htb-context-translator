@@ -117,7 +117,7 @@ A extensão usa IA generativa (Google Gemini) com um **prompt especializado em s
 
 1. **Clone o repositório:**
    ```bash
-   git clone https://github.com/Mid-night2026/htb-context-translator.git
+   git clone https://github.com/NexusGuard-Labs/htb-context-translator.git
    cd htb-context-translator
    ```
 
@@ -363,6 +363,6 @@ Este projeto é distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](LI
 
 **Desenvolvido com 💚 para a comunidade de Cibersegurança brasileira**
 
-*Feito por [Mid-night2026](https://github.com/Mid-night2026)*
+*Feito por [NexusGuard-Labs](https://github.com/NexusGuard-Labs)*
 
 </div>

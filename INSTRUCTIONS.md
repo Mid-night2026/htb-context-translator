@@ -20,7 +20,7 @@ Este documento cobre a instalação, configuração e uso detalhado da extensão
 
 ```bash
 # Clone o repositório
-git clone https://github.com/Mid-night2026/htb-context-translator.git
+git clone https://github.com/NexusGuard-Labs/htb-context-translator.git
 
 # Acesse a pasta do projeto
 cd htb-context-translator
@@ -28,7 +28,7 @@ cd htb-context-translator
 
 ### Método 2: Download Direto
 
-1. Acesse: https://github.com/Mid-night2026/htb-context-translator
+1. Acesse: https://github.com/NexusGuard-Labs/htb-context-translator
 2. Clique no botão verde **"Code"** → **"Download ZIP"**.
 3. Extraia o arquivo ZIP.
 

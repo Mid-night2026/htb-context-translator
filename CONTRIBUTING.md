@@ -12,7 +12,7 @@ Ao contribuir, você concorda em manter um ambiente respeitoso e colaborativo. S
 
 ## 🐛 Reportando Bugs
 
-1. Verifique se o bug já foi reportado nas [Issues](https://github.com/Mid-night2026/htb-context-translator/issues).
+1. Verifique se o bug já foi reportado nas [Issues](https://github.com/NexusGuard-Labs/htb-context-translator/issues).
 2. Se não, abra uma nova issue com:
    - **Título claro e descritivo**
    - **Passos para reproduzir** o problema
