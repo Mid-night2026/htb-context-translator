@@ -42,7 +42,7 @@ async function chamarGemini(payload, systemInstruction = SYSTEM_PROMPT) {
     throw new Error('Chave de API do Gemini não configurada.');
   }
 
-  const modelos = ['gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+  const modelos = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
   let ultimoErro = null;
 
   for (const modelo of modelos) {
