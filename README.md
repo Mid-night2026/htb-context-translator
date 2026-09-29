@@ -326,6 +326,17 @@ extensao_traductor/
 
 ---
 
+## ⚠️ Isenção de Responsabilidade (Disclaimer)
+
+Este é um projeto de código aberto criado pela comunidade e **não possui afiliação, patrocínio ou endosso oficial do Hack The Box ou do Google**.
+
+- A extensão **não** burla paywalls, **não** distribui material VIP/pago e **não** armazena conteúdo protegido por direitos autorais.
+- A tradução ocorre estritamente do lado do cliente (no seu navegador), modificando apenas a visualização (DOM) das páginas que você já tem acesso legítimo via sua conta no HTB Academy.
+- A responsabilidade pelo uso e guarda das chaves de API do Google Gemini recai inteiramente sobre o usuário final.
+
+---
+
+
 ## 🤝 Contribuindo
 
 Contribuições são bem-vindas! Veja o guia completo em [CONTRIBUTING.md](CONTRIBUTING.md).
