@@ -1,0 +1,10 @@
+# Configurações com credenciais e chaves
+config.js
+.env
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/

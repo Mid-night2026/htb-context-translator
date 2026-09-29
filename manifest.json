@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "HTB Context Translator",
+  "version": "1.0",
+  "description": "Tradutor especializado em Cibersegurança usando a API do Gemini.",
+  "permissions": ["contextMenus", "scripting", "activeTab", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
