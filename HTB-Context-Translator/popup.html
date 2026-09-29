@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTB Context Translator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <span class="logo-icon">🛡️</span>
+        <div>
+          <h1>HTB Translator</h1>
+          <span class="subtitle">Contextual AI • v1.2</span>
+        </div>
+      </div>
+      <span id="header-status-badge" class="badge badge-idle">Pronto</span>
+    </header>
+
+    <!-- Status Atual da Chave -->
+    <section class="card status-card">
+      <div class="card-label">Status da Chave de API</div>
+      <div class="status-row">
+        <span id="status-indicator-dot" class="dot dot-unknown"></span>
+        <span id="current-key-masked" class="key-masked">Verificando...</span>
+      </div>
+    </section>
+
+    <!-- Formulário da Chave de API -->
+    <section class="card">
+      <div class="card-label">Configurar Nova Chave de API</div>
+      <div class="input-group">
+        <input 
+          type="password" 
+          id="api-key-input" 
+          placeholder="Insira sua chave (AIzaSy...)" 
+          autocomplete="off" 
+          spellcheck="false"
+        >
+        <button type="button" id="toggle-visibility" class="btn-icon" title="Mostrar/Ocultar caracteres">
+          👁️
+        </button>
+      </div>
+
+      <div class="button-row">
+        <button type="button" id="btn-save-key" class="btn btn-primary">
+          <span>💾</span> Salvar Chave
+        </button>
+        <button type="button" id="btn-test-key" class="btn btn-secondary">
+          <span>⚡</span> Testar Conexão
+        </button>
+      </div>
+
+      <div id="api-feedback" class="feedback-box" style="display: none;"></div>
+    </section>
+
+    <!-- Automação de Seções -->
+    <section class="card">
+      <div class="toggle-container">
+        <div class="toggle-info">
+          <span class="toggle-title">Auto-traduzir Seções</span>
+          <span class="toggle-desc">Traduz seções seguintes e anteriores automaticamente ao navegar no curso.</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="auto-translate-toggle">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Ações Rápidas -->
+    <section class="quick-actions">
+      <button type="button" id="btn-translate-now" class="btn btn-full btn-accent">
+        <span>✨</span> Traduzir Seção Atual na Página
+      </button>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <span>Hack The Box Academy • Infosec pt-BR</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
