@@ -53,15 +53,17 @@ def testar_chave(api_key: str) -> bool:
 
 def garantir_gitignore():
     """Garante que config.js está protegido no .gitignore."""
-    if os.path.exists(CAMINHO_GITIGNORE):
-        with open(CAMINHO_GITIGNORE, "r", encoding="utf-8") as f:
-            conteudo = f.read()
-        if "config.js" not in conteudo:
-            with open(CAMINHO_GITIGNORE, "a", encoding="utf-8") as f:
-                f.write("\nconfig.js\n")
-    else:
-        with open(CAMINHO_GITIGNORE, "w", encoding="utf-8") as f:
-            f.write("config.js\n.env\n*.local\n")
+    for d in [DIRETORIO_ATUAL, os.path.dirname(DIRETORIO_ATUAL)]:
+        caminho_gi = os.path.join(d, ".gitignore")
+        if os.path.exists(caminho_gi):
+            try:
+                with open(caminho_gi, "r", encoding="utf-8") as f:
+                    conteudo = f.read()
+                if "config.js" not in conteudo:
+                    with open(caminho_gi, "a", encoding="utf-8") as f:
+                        f.write("\nconfig.js\n**/config.js\n")
+            except Exception:
+                pass
 
 
 def atualizar_config(api_key: str):

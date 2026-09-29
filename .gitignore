@@ -1,5 +1,7 @@
 # Configurações com credenciais e chaves
 config.js
+*/config.js
+**/config.js
 .env
 *.local
 
@@ -8,4 +10,4 @@ __pycache__/
 *.py[cod]
 venv/
 .venv/
-HTB-Translator
+HTB Context Translator
