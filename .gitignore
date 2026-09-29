@@ -1,13 +1,35 @@
-# Configurações com credenciais e chaves
+# Configurações com credenciais e chaves de API
 config.js
 */config.js
 **/config.js
 .env
+.env.*
 *.local
+.config-*
 
 # Python
 __pycache__/
 *.py[cod]
 venv/
 .venv/
-HTB Context Translator
+
+# Node
+node_modules/
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Build
+dist/
+*.zip
+*.crx
+*.pem
