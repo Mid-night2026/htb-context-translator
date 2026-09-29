@@ -258,6 +258,13 @@
               matchItem.element.innerHTML = htmlFinal;
               matchItem.element.dataset.htbTranslatedHtml = htmlFinal;
               matchItem.element.dataset.htbTranslated = 'true';
+              
+              // Salvar no Cache
+              try {
+                const cacheKey = gerarChaveElemento(matchItem.element);
+                sessionStorage.setItem(cacheKey, htmlFinal);
+              } catch(e) {}
+              
               traduzidosSucesso++;
             }
           });
