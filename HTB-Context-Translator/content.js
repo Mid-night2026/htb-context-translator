@@ -263,8 +263,14 @@
         if (!resposta) {
           const apiKey = await obterApiKeyAtiva();
           if (apiKey) {
-            const sysPrompt = `Você é um tradutor especialista em Cibersegurança do HTB Academy. Traduza para pt-BR natural. PROIBIÇÃO ABSOLUTA: NUNCA coloque termos em inglês e traduções redundantes lado a lado entre parênteses (ex: NUNCA faça "Forward Proxy (proxy de encaminhamento)" ou "requisições HTTP (HTTP Requests)"). Termos consagrados (Forward Proxy, tampering, pivoting, payload, reverse shell, wordlist, etc.) DEVEM ficar estritamente em inglês sem duplicatas. Responda ESTRITAMENTE em JSON: {"translations": [{"id": number, "translatedText": string}]}`;
-            const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+            const sysPrompt = `Você é um tradutor especialista em Cibersegurança do HTB Academy.
+Sua missão é traduzir um array JSON contendo blocos de HTML para Português do Brasil (pt-BR).
+REGRAS ABSOLUTAS:
+1. NUNCA altere, quebre ou traduza as tags HTML (ex: <p>, <strong>, <em>, <span>). Mantenha a estrutura exata.
+2. NUNCA traduza jargões técnicos consolidados (ex: payload, reverse shell, pivoting, tampering, wordlist, bind shell, exploit, hash).
+3. PROIBIDO colocar a versão em inglês seguida da tradução entre parênteses. (Ex: "Requisição HTTP (HTTP Request)"). Deixe apenas a melhor versão!
+4. Responda apenas com o JSON puro validado pelo schema, sem markdown (\`\`\`).`;
+            const models = ['gemini-1.5-flash', 'gemini-1.5-flash-8b'];
             for (const m of models) {
               try {
                 const fetchResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
@@ -273,14 +279,37 @@
                   body: JSON.stringify({
                     system_instruction: { parts: [{ text: sysPrompt }] },
                     contents: [{ parts: [{ text: JSON.stringify(payload) }] }],
-                    generationConfig: { response_mime_type: 'application/json' }
+                    generationConfig: { 
+                      temperature: 0.1,
+                      response_mime_type: 'application/json',
+                      response_schema: {
+                        type: "object",
+                        properties: {
+                          translations: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                id: { type: "integer" },
+                                translatedText: { type: "string" }
+                              },
+                              required: ["id", "translatedText"]
+                            }
+                          }
+                        },
+                        required: ["translations"]
+                      }
+                    }
                   })
                 });
                 const j = await fetchResp.json();
                 if (j.candidates && j.candidates[0]?.content?.parts?.[0]?.text) {
-                  const parsed = JSON.parse(j.candidates[0].content.parts[0].text);
-                  resposta = parsed.translations || parsed;
-                  break;
+                  const textOutput = j.candidates[0].content.parts[0].text;
+                  const parsed = JSON.parse(textOutput);
+                  resposta = parsed.translations;
+                  if (resposta) break;
+                } else {
+                  console.error('[HTB-Translator] API retornou erro:', j);
                 }
               } catch (err) {}
             }
