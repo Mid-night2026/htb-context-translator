@@ -105,8 +105,8 @@ Usamos o formato [Conventional Commits](https://www.conventionalcommits.org/):
 ### Onde fazer cada tipo de alteração
 
 - **Melhorias no prompt de IA** → `background.js` (constante `SYSTEM_PROMPT`)
-- **Melhorias na detecção de navegação** → `content.js` (função `monitorarNavegacao`)
-- **Novos termos a preservar** → `background.js` (listas no `SYSTEM_PROMPT`)
+- **Melhorias na detecção de navegação** → `content.js` (funções `checkRoute` e `schedule`)
+- **Novos termos a preservar** → `background.js` (regras contextuais no `SYSTEM_PROMPT`)
 - **Ajustes visuais** → `styles.css` (widget) ou `popup.css` (popup)
 - **Nova funcionalidade no popup** → `popup.html` + `popup.js`
 
@@ -135,3 +135,24 @@ Usamos o formato [Conventional Commits](https://www.conventionalcommits.org/):
 ---
 
 Obrigado por contribuir! 💚
+
+## Testes automatizados
+
+```bash
+npm install
+npx playwright-core install chromium
+npm test
+npm run test:python
+```
+
+Para usar um Chromium já instalado: `CHROME_PATH=/caminho/para/chrome npm test`. Os testes usam um perfil temporário, conteúdo sintético e respostas Gemini simuladas; não carregam seu perfil pessoal nem sua chave. O teste integrado carrega a extensão real e exercita popup, worker e content script.
+
+Antes de enviar um PR, rode também `git diff --check`. Separe a branch de revisão do checkout usado por outra sessão. Faça commit e push dos conjuntos concluídos; não sobrescreva mudanças concorrentes.
+
+### Avaliação opcional do prompt com Gemini real
+
+```bash
+HTB_CONFIG_FILE=/caminho/privado/config.js node tests/evaluate-prompt.cjs
+```
+
+Consome cota da sua chave e envia somente cinco exemplos sintéticos de `tests/prompt-cases.json`. Verifica termos essenciais e confusões conhecidas (proxy reverso/forward proxy); leia as respostas para avaliar fluência e sentido. Não publique seu `config.js`.

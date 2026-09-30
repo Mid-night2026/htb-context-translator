@@ -7,6 +7,10 @@ na extensão HTB Context Translator.
 import os
 import sys
 import json
+import getpass
+import re
+import tempfile
+import time
 import urllib.request
 import urllib.error
 
@@ -25,10 +29,10 @@ CAMINHO_GITIGNORE = os.path.join(DIRETORIO_ATUAL, ".gitignore")
 
 def testar_chave(api_key: str) -> bool:
     """Verifica se a chave é válida testando na API do Gemini."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models"
     print(f"\n{CYAN}⏳ Validando chave junto à API do Google Gemini...{RESET}")
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "HTB-Translator-Setup"})
+        req = urllib.request.Request(url, headers={"User-Agent": "HTB-Translator-Setup", "x-goog-api-key": api_key})
         with urllib.request.urlopen(req, timeout=8) as resp:
             data = json.loads(resp.read().decode())
             if "models" in data:
@@ -41,7 +45,7 @@ def testar_chave(api_key: str) -> bool:
             msg = err_json.get("error", {}).get("message", str(e))
         except Exception:
             msg = str(e)
-        print(f"{RED}✗ Erro na API do Gemini ({e.code}): {msg}{RESET}")
+        print(f"{RED}✗ Chave rejeitada ou serviço indisponível (HTTP {e.code}).{RESET}")
         return False
     except Exception as e:
         print(f"{YELLOW}⚠ Não foi possível validar online (erro de rede: {e}).{RESET}")
@@ -68,41 +72,38 @@ def garantir_gitignore():
 
 def atualizar_config(api_key: str):
     """Salva a chave no config.js."""
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{15,256}", api_key):
+        raise ValueError("Formato de chave inválido.")
     garantir_gitignore()
-    conteudo_js = (
-        "// Configuração local da extensão (ignorado pelo Git)\n"
-        "const CONFIG = {\n"
-        f"  GEMINI_API_KEY: '{api_key}'\n"
-        "};\n"
-    )
-    with open(CAMINHO_CONFIG, "w", encoding="utf-8") as f:
-        f.write(conteudo_js)
+    payload = {"GEMINI_API_KEY": api_key, "UPDATED_AT": time.time_ns() // 1_000_000}
+    conteudo_js = "// Configuração local (ignorada pelo Git)\nconst CONFIG = " + json.dumps(payload, indent=2) + ";\n"
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(CAMINHO_CONFIG), prefix=".config-", delete=False) as file:
+            temporary = file.name
+            os.chmod(temporary, 0o600)
+            file.write(conteudo_js)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary, CAMINHO_CONFIG)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
 
     print(f"\n{GREEN}{BOLD}===================================================={RESET}")
     print(f"{GREEN}{BOLD}  ✅ Chave da API atualizada com sucesso no config.js!{RESET}")
     print(f"{GREEN}{BOLD}===================================================={RESET}")
-    print(f"{CYAN}Dica: Recarregue a página do HTB Academy ou clique em recarregar na extensão para usar a nova chave.{RESET}\n")
+    print(f"{CYAN}Recarregue a extensão em chrome://extensions e depois as abas do HTB. A configuração mais recente (popup ou terminal) terá prioridade.{RESET}\n")
 
 
 def main():
     print(f"\n{BOLD}{CYAN}=== 🛡️ Atualizador de API - HTB Context Translator ==={RESET}\n")
 
-    # Verifica se já existe uma chave configurada
     if os.path.exists(CAMINHO_CONFIG):
-        try:
-            with open(CAMINHO_CONFIG, "r", encoding="utf-8") as f:
-                c = f.read()
-            import re
-            m = re.search(r"GEMINI_API_KEY:\s*'([^']+)'", c)
-            if m and m.group(1) != "SUA_CHAVE_API_AQUI":
-                chave_atual = m.group(1)
-                preview = chave_atual[:8] + "..." + chave_atual[-4:]
-                print(f"Chave atual configurada: {YELLOW}{preview}{RESET}\n")
-        except Exception:
-            pass
+        print("Já existe uma configuração local (chave oculta).")
 
     try:
-        nova_chave = input(f"{BOLD}🔑 Cole ou digite a sua nova chave da API do Gemini: {RESET}").strip()
+        nova_chave = getpass.getpass(f"{BOLD}🔑 Cole ou digite a sua nova chave da API do Gemini: {RESET}").strip()
     except (KeyboardInterrupt, EOFError):
         print(f"\n{YELLOW}Operação cancelada pelo usuário.{RESET}")
         sys.exit(0)
@@ -112,6 +113,10 @@ def main():
 
     if not nova_chave:
         print(f"{RED}✗ Nenhuma chave fornecida. Operação abortada.{RESET}")
+        sys.exit(1)
+
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{15,256}", nova_chave):
+        print(f"{RED}Formato de chave inválido.{RESET}")
         sys.exit(1)
 
     # Testa a chave antes de salvar

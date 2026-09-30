@@ -1,0 +1,7 @@
+[
+  {"id":0,"text":"Use Burp Suite to inspect the HTTP request headers before sending the payload.","required":["Burp Suite","cabeçalh","requisi","payload"],"forbidden":["carga útil"]},
+  {"id":1,"text":"Privilege escalation on the target may require brute force. A reverse proxy forwards requests to the web server.","required":["escalonamento de privilégios","alvo","força bruta","proxy reverso"],"forbidden":["forward proxy"]},
+  {"id":2,"text":"Run __HTB_KEEP_0__ and inspect /etc/passwd without modifying the file.","required":["__HTB_KEEP_0__","/etc/passwd","sem"],"forbidden":["/etc/senha"]},
+  {"id":3,"text":"Tampering with the request may bypass validation. The session cookie identifies the authenticated user.","required":["requisi","valida","cookie","sessão"],"forbidden":["mexer"]},
+  {"id":4,"text":"The client uses a forward proxy. The reverse proxy protects the web server.","required":["forward proxy","proxy reverso"],"forbidden":["proxy de encaminhamento"]}
+]

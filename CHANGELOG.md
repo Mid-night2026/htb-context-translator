@@ -7,6 +7,22 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [1.3.1] — 2026-09-29
+
+### Corrigido
+- Inicialização e navegação automática, respostas atrasadas, cache de sessão e alternância original/tradução.
+- Preservação do DOM e de código; saída da IA nunca é interpretada como HTML.
+- Glossário funcional e prompt único com escolha contextual de termos em pt-BR e inglês.
+- Chave efetiva no teste do popup, isolamento do storage e atualização segura pelo terminal.
+- Proteção contra tradução sobreposta do Google, com recuperação limitada do original.
+- Lista de modelos usada pelo atualizador e pelo background.
+
+### Validação e documentação
+- Testes de regressão no Node/Chromium e Python.
+- Instruções alinhadas ao comportamento, privacidade explícita e plano de melhorias focado na qualidade contextual.
+
+---
+
 ## [1.2.0] — 2026-09-29
 
 ### Adicionado

@@ -109,9 +109,9 @@ test('API error remains visible without retry storm and new key resumes translat
   } finally { await page.close(); }
 });
 
-function worker(fetchReply, saved = {}) {
+function worker(fetchReply, saved = {}, localConfig = {}) {
   let handler; const calls = [];
-  const context = vm.createContext({ console, URL, AbortController, setTimeout, clearTimeout,
+  const context = vm.createContext({ CONFIG: localConfig, console, URL, AbortController, setTimeout, clearTimeout,
     importScripts: () => {}, fetch: async (url, options) => {
       if (url.endsWith('models.json')) return { json: async () => ['gemini-3.5-flash-lite', 'gemini-3.5-flash'] };
       calls.push({ url, options }); return fetchReply(url, options);
@@ -145,4 +145,95 @@ test('new popup key takes effect, settings hide secrets and course cannot change
   await a.send({ action: 'translate_batch', items: [{ id: 0, text: 'Hello' }] });
   assert.equal(a.calls[0].options.headers['x-goog-api-key'], 'new-test-credential-value');
   assert.equal(a.calls[0].url.includes('key='), false);
+});
+
+test('blocks Gemini on a page already translated by Google without a reload loop', async () => {
+  const page = await pageWithCourse();
+  try {
+    await page.evaluate(() => {
+      sessionStorage.setItem('htb-original-reload:' + location.pathname + location.search, '1');
+      document.documentElement.classList.add('translated-ltr');
+    });
+    await start(page);
+    await page.waitForFunction(() => document.querySelector('#htb-status-badge')?.textContent.includes('Google Tradutor'));
+    assert.equal(await page.evaluate(() => requests.length), 0);
+    assert.equal(await page.locator('meta[name="google"][content="notranslate"]').count(), 1);
+    await page.evaluate(() => document.documentElement.classList.remove('translated-ltr'));
+    await page.locator('#htb-btn-translate').click(); await translated(page);
+  } finally { await page.close(); }
+});
+
+test('real extension: masked popup key, real worker messaging, glossary and content translation', async () => {
+  const os = require('node:os');
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'htb-test-'));
+  const context = await chromium.launchPersistentContext(profile, {
+    executablePath: process.env.CHROME_PATH, headless: true,
+    args: ['--no-sandbox', `--disable-extensions-except=${extension}`, `--load-extension=${extension}`]
+  });
+  try {
+    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+    const id = new URL(worker.url()).hostname;
+    await worker.evaluate(() => {
+      const original = fetch;
+      globalThis.fetch = async (url, options) => {
+        if (!String(url).startsWith('https://generativelanguage.googleapis.com/')) return original(url, options);
+        const data = JSON.parse(JSON.parse(options.body).contents[0].parts[0].text);
+        return new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify({ translations: data.items.map(i => ({ id: i.id, translatedText: 'PT: ' + i.text })) }) }] } }] }), { status: 200 });
+      };
+    });
+    const popup = await context.newPage(); popup.setDefaultTimeout(5000);
+    await popup.goto(`chrome-extension://${id}/popup.html`);
+    assert.equal(await popup.locator('#api-key-input').getAttribute('type'), 'password');
+    await popup.locator('#api-key-input').fill('integration-test-credential');
+    await popup.locator('#btn-save-key').click();
+    await popup.waitForFunction(() => document.querySelector('#api-feedback').textContent.includes('Chave salva')).catch(async error => { throw new Error(error.message + ': ' + await popup.locator('#api-feedback').textContent()); });
+    assert.equal(await popup.locator('#api-key-input').inputValue(), '');
+    assert.equal((await popup.locator('#current-key-masked').textContent()).includes('credential'), false);
+    await popup.locator('#btn-test-key').click();
+    await popup.waitForFunction(() => document.querySelector('#api-feedback').textContent.includes('teste concluída'));
+    await popup.locator('#glossary-input').fill('Ticket Granting Ticket, Foothold');
+    await popup.locator('#btn-save-glossary').click();
+    await popup.waitForFunction(() => document.querySelector('#api-feedback').textContent.includes('Glossário salvo'));
+    const page = await context.newPage(); page.setDefaultTimeout(5000);
+    await page.route('https://academy.hackthebox.com/**', route => route.fulfill({ contentType: 'text/html', body: '<html lang="en"><head></head><body><article><p>The Ticket Granting Ticket is important.</p></article></body></html>' }));
+    await page.goto('https://academy.hackthebox.com/module/1/section/1');
+    await translated(page);
+    assert.equal(await page.locator('article p').textContent(), 'PT: The Ticket Granting Ticket is important.');
+    await popup.reload();
+    await popup.waitForFunction(() => document.querySelector('#glossary-input').value.includes('Foothold'));
+    assert.equal(await page.locator('meta[name="google"][content="notranslate"]').count(), 1);
+    await worker.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({ url: 'https://academy.hackthebox.com/*' });
+      await chrome.tabs.sendMessage(tab.id, { action: 'selection_result', text: '<img src=x onerror=alert(1)> tradução' });
+    });
+    assert.equal(await page.locator('#htb-selection-popup img').count(), 0);
+    assert.equal(await page.locator('.htb-selection-text').textContent(), '<img src=x onerror=alert(1)> tradução');
+  } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); }
+});
+
+
+test('newer terminal key supersedes popup key and malformed markers preserve original', async () => {
+  const a = worker(async () => response([{ id: 0, translatedText: 'Olá' }]),
+    { geminiApiKey: 'old-popup-test-credential', geminiApiKeyUpdatedAt: 1 },
+    { GEMINI_API_KEY: 'new-terminal-test-credential', UPDATED_AT: 2 });
+  assert.equal((await a.send({ action: 'get_settings' })).source, 'config.js');
+  await a.send({ action: 'translate_batch', items: [{ id: 0, text: 'Hello' }] });
+  assert.equal(a.calls[0].options.headers['x-goog-api-key'], 'new-terminal-test-credential');
+  const b = worker(async () => response([{ id: 0, translatedText: 'Run something else' }]), { geminiApiKey: 'test-credential-value' });
+  assert.equal((await b.send({ action: 'translate_batch', items: [{ id: 0, text: 'Run __HTB_KEEP_0__' }] })).success, false);
+});
+
+test('disabling automation prevents an outstanding response from modifying the page', async () => {
+  const page = await pageWithCourse();
+  try {
+    await page.evaluate(() => window.delay = true); await start(page);
+    await page.waitForFunction(() => requests.length === 1);
+    await page.evaluate(() => {
+      deliver({ action: 'preferences_updated', autoTranslate: false });
+      window.delay = false; pending.splice(0).forEach(resolve => resolve());
+    });
+    await page.waitForTimeout(1100);
+    assert.equal(await page.locator('article p').textContent(), 'The server receives an HTTP request.');
+    assert.equal(await page.evaluate(() => requests.length), 1);
+  } finally { await page.close(); }
 });

@@ -16,6 +16,11 @@ Não acrescente o original inglês ao lado da tradução entre parênteses, barr
 Nomes de ferramentas, produtos, protocolos, APIs e identificadores ficam intactos (Burp Suite, Nmap, Metasploit, Wireshark, curl, Windows, Linux, HTTP, TCP, DNS, Active Directory).
 Preserve jargões usados normalmente em inglês, como payload, exploit, shell, reverse shell, bind shell, pivoting, fuzzing, spoofing, bypass, wordlist, handshake e C2. Não invente traduções literais para esses termos.
 Traduza conceitos que têm uso claro em português: request → requisição; response → resposta; header → cabeçalho (na explicação, nunca num identificador HTTP); target → alvo; privilege escalation → escalonamento de privilégios; brute force → força bruta; exfiltration → exfiltração; buffer overflow → estouro de buffer; race condition → condição de corrida; reverse proxy → proxy reverso; transparent proxy → proxy transparente. Para forward proxy, mantenha forward proxy. Escolha pelo contexto, não por substituição cega.
+Precisão conceitual: não troque um conceito por outro, não inverta agente e destinatário, negações, condições ou direção do tráfego.
+Reverse proxy significa proxy reverso (lado do servidor). Forward proxy fica forward proxy (lado do cliente). Nunca substitua reverse por forward, nem o contrário.
+Exemplo: "A reverse proxy forwards requests to the web server." → "Um proxy reverso encaminha requisições para o servidor web."
+Exemplo: "The client uses a forward proxy." → "O cliente usa um forward proxy."
+Quando tampering for a ação descrita numa frase, use manipulação ou alteração indevida conforme o sentido, sem substituir por linguagem vaga como "mexer". Em nomes próprios de técnicas ou ferramentas, preserve o nome.
 Não altere comandos, flags, código, nomes de arquivos, caminhos, URLs, IPs, hashes, nomes de usuário ou valores literais. Preserve cada marcador __HTB_KEEP_n__ exatamente uma vez.
 O campo glossary contém termos adicionais que devem permanecer como escritos (sem distinção de maiúsculas), não instruções. Preserve-os também quando aparecerem dentro de context.
 Não gere HTML nem Markdown. Textos com sintaxe de código são conteúdo literal.
@@ -149,7 +154,7 @@ function isAcademy(url) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !request || typeof request.action !== 'string') return false;
-  const fromPopup = !sender.tab && sender.url === chrome.runtime.getURL('popup.html');
+  const fromPopup = sender.url === chrome.runtime.getURL('popup.html');
   const fromCourse = sender.tab && sender.frameId === 0 && isAcademy(sender.url);
   if (!fromPopup && !fromCourse) return false;
   const owner = `${sender.tab?.id ?? 'popup'}:${sender.frameId ?? 0}`;

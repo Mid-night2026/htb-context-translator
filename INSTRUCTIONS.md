@@ -56,13 +56,9 @@ A extensão utiliza a API do **Google Gemini** (plano gratuito disponível). Cad
 4. Selecione ou crie um projeto do Google Cloud.
 5. Copie a chave gerada (formato: `AIzaSy...`).
 
-### Limites do plano gratuito
+### Disponibilidade e cota
 
-O plano gratuito do Google Gemini oferece:
-- **gemini-3.5-flash-lite**: 30 requisições por minuto (RPM)
-- **gemini-3.5-flash**: 15 requisições por minuto (RPM)
-
-Isso é mais do que suficiente para traduzir seções completas do HTB Academy. Um módulo típico consome de 5 a 15 requisições por seção.
+Consulte os limites do seu projeto no [Google AI Studio](https://aistudio.google.com/) e a [documentação de limites](https://ai.google.dev/gemini-api/docs/rate-limits). Não há garantia de uma quantidade fixa de requisições gratuitas. O botão de teste executa uma tradução curta e consome cota.
 
 ---
 
@@ -88,10 +84,12 @@ cd HTB-Context-Translator/
 ```
 
 O script interativo:
-1. Mostra a chave atual (mascarada) se existir.
-2. Solicita a nova chave.
+1. Informa se existe uma configuração, sem mostrar a chave.
+2. Solicita a nova chave sem eco no terminal.
 3. Valida contra a API do Google Gemini.
-4. Salva no arquivo `config.js` local.
+4. Salva de forma atômica em `config.js`, com permissão `600` e data de atualização.
+
+Recarregue a extensão em `chrome://extensions/` e depois as abas do HTB. A configuração mais recente entre popup e terminal prevalece. Configurações antigas sem data ficam abaixo da chave do popup.
 
 ### Opção C: Edição Manual
 
@@ -109,7 +107,7 @@ const CONFIG = {
 };
 ```
 
-> ⚠️ O arquivo `config.js` está no `.gitignore` e **nunca** será commitado.
+> ⚠️ O arquivo `config.js` está no `.gitignore` para evitar inclusão acidental. Não force sua inclusão no Git.
 
 ---
 
@@ -123,7 +121,7 @@ Por padrão, a auto-tradução está **ativada**. Ao navegar entre seções no H
 
 1. Acesse qualquer módulo no [HTB Academy](https://academy.hackthebox.com/).
 2. O **widget flutuante** aparece no canto inferior direito.
-3. Clique em **✨ Traduzir Página (IA)**.
+3. Clique em **Traduzir / tentar novamente**.
 4. Aguarde a tradução por lotes (o badge mostra `Traduzindo (1/N)...`).
 
 ### Alternar entre Tradução e Original
@@ -155,8 +153,11 @@ A IA é instruída a **manter em inglês** os seguintes tipos de termos sem trad
 ### Ferramentas e Utilitários
 `Burp Suite` · `ZAP` · `Nmap` · `Metasploit` · `Wireshark` · `Cloudflare` · `ModSecurity` · `curl` · `netcat` · `socat` · `hydra` · `sqlmap` · `john` · `hashcat` · `mimikatz` · `ffuf` · `gobuster` · `dirsearch` · `Responder`
 
-### Jargões Técnicos de Segurança Ofensiva
-`Forward Proxy` · `Reverse Proxy` · `Transparent Proxy` · `Pivoting` · `Listener` · `Payload` · `Exploit` · `Reverse Shell` · `Bind Shell` · `Web Shell` · `Buffer Overflow` · `Bypass` · `Privilege Escalation` · `Root` · `Tampering` · `Spoofing` · `Tunneling` · `C2` · `Wordlist` · `Fuzzing` · `Brute Force` · `Handshake` · `Exfiltration` · `Beaconing` · `Foothold` · `Pwn` · `XSS` · `SSRF` · `CSRF` · `SQL Injection` · `Man-in-the-Middle (MitM)`
+### Terminologia contextual
+
+Mantenha nomes de ferramentas e jargões consagrados, como `payload`, `exploit`, `pivoting`, `fuzzing`, `reverse shell` e `forward proxy`. Traduza conceitos usuais em português: **alvo**, **requisição**, **cabeçalho** na explicação, **força bruta**, **escalonamento de privilégios**, **exfiltração**, **proxy reverso** e **condição de corrida**. Identificadores literais de protocolo e código não mudam.
+
+O prompt proíbe adicionar pares inglês/português redundantes; preserva informação que já esteja no original. No popup, o glossário opcional permite indicar termos separados por vírgulas que você deseja manter. Salvar o glossário invalida a tradução anterior e atualiza a seção.
 
 ### Protegidos Integralmente
 - Comandos shell e flags: `nmap -sV -p- -oA scan`
@@ -198,3 +199,11 @@ Depois, em `chrome://extensions/`, clique no botão de recarregar 🔄 no card d
 4. Confirme a remoção.
 
 A chave de API armazenada no `chrome.storage.local` será removida automaticamente junto com a extensão.
+
+## Google Tradutor e falhas da API
+
+A extensão sinaliza `notranslate` no começo do carregamento. Ao detectar uma página já traduzida pelo Google, tenta uma única recarga por seção. Se persistir, selecione **Mostrar original** no Chrome. A preferência global de tradução pertence ao navegador, não à extensão.
+
+Uma falha de rede, cota, resposta incompleta ou marcador de código alterado mantém o texto original do lote. Lotes já concluídos continuam disponíveis, e o botão **Traduzir / tentar novamente** retoma o restante. Desativar a automação cancela a tradução pendente; avançar/voltar também descarta respostas antigas.
+
+Os modelos estão em `HTB-Context-Translator/models.json`. O utilitário `python3 atualizar_modelo.py` mostra a configuração; passe de um a três IDs oficiais para atualizá-la e depois recarregue a extensão. A disponibilidade depende do projeto no Google.

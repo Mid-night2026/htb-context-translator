@@ -6,7 +6,7 @@
   const BLOCKS = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,td,th,figcaption';
   const IGNORE = 'pre,code,kbd,samp,script,style,textarea,input,select,button,form,nav,footer,svg,math,[contenteditable]:not([contenteditable="false"]),[translate="no"],.notranslate,.terminal,.xterm,.console,.pwnbox-terminal,.question-box,.questions,[hidden],[aria-hidden="true"],#htb-translator-widget,#htb-selection-popup';
   const records = new Map();
-  let glossary = '';
+  let glossary = '', googleBlocked = false;
   const cache = new Map();
   try {
     const saved = JSON.parse(sessionStorage.getItem('htb-translations-v2') || '[]');
@@ -243,7 +243,7 @@
     };
     observer = new MutationObserver(mutations => {
       if (checkRoute()) return;
-      if (guard?.isTranslated()) { cancel(); schedule(); return; }
+      if (guard?.isTranslated()) return;
       const relevant = mutations.some(m => {
         const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
         return el && !el.closest('#htb-translator-widget,#htb-selection-popup') && (container()?.contains(el) || m.type === 'childList' && Array.from(m.addedNodes).some(n => n.nodeType === Node.ELEMENT_NODE && (n.matches('article,main,.module-content,#module-content') || n.querySelector('article,main,.module-content,#module-content'))));
@@ -252,7 +252,16 @@
     });
     observe();
     // A página e o content script usam mundos JS diferentes: não sobrescreve history.pushState.
-    setInterval(() => { if (!checkRoute() && guard?.isTranslated()) { cancel(); schedule(); } }, 500);
+    setInterval(() => {
+      if (checkRoute() || !isLesson()) return;
+      if (guard?.isTranslated()) {
+        if (!googleBlocked) {
+          googleBlocked = true; cancel();
+          status('Google Tradutor ativo. Use Mostrar original no Chrome para continuar.', false, true);
+          guard.ensureOriginal();
+        }
+      } else if (googleBlocked) { googleBlocked = false; failure = false; schedule(); }
+    }, 500);
     window.addEventListener('popstate', () => { checkRoute(); });
     window.addEventListener('pageshow', () => { checkRoute(); schedule(); });
     chrome.runtime.onMessage.addListener((request, sender, respond) => {
