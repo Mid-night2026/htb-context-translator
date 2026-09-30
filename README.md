@@ -13,7 +13,7 @@
 
 <br>
 
-**Extensão para Google Chrome que traduz os cursos do HTB Academy do inglês para o Português do Brasil usando a IA do Google Gemini, preservando integralmente nomes de ferramentas, jargões de segurança ofensiva, comandos e blocos de código.**
+**Extensão para Google Chrome que traduz os cursos do HTB Academy do inglês para o Português do Brasil usando a IA do Google Gemini, com português técnico natural, preservação de código e escolha contextual dos termos que devem permanecer em inglês.**
 
 [Instalação](#-instalação) •
 [Configuração da API](#-configuração-da-chave-de-api) •
@@ -44,7 +44,7 @@
 
 ## ❌ Problema e Motivação
 
-Tradutores genéricos de navegadores (como o Google Tradutor integrado ao Chrome) **destroem** conteúdos técnicos de cibersegurança:
+Traduções genéricas podem perder o sentido de termos técnicos ou alterar exemplos. A extensão procura evitar problemas como:
 
 | Problema | Exemplo |
 |---|---|
@@ -56,9 +56,9 @@ Tradutores genéricos de navegadores (como o Google Tradutor integrado ao Chrome
 
 ### ✅ Como o HTB Context Translator resolve
 
-A extensão usa IA generativa (Google Gemini) com um **prompt especializado em segurança ofensiva** que entende o domínio técnico do HTB Academy. A IA sabe distinguir:
+A extensão usa IA generativa (Google Gemini) com um **prompt especializado em segurança ofensiva** que entende o domínio técnico do HTB Academy. O prompt orienta a IA a distinguir; a revisão humana continua necessária para avaliar a qualidade:
 
-- **O que NÃO traduzir:** Ferramentas (`Burp Suite`, `Nmap`, `sqlmap`), jargões (`Forward Proxy`, `pivoting`, `payload`, `reverse shell`, `tampering`, `C2`), comandos, flags, caminhos, IPs, hashes.
+- **O que preservar:** Ferramentas (`Burp Suite`, `Nmap`, `sqlmap`), jargões consagrados (`forward proxy`, `pivoting`, `payload`, `reverse shell`, `C2`), comandos, flags, caminhos, IPs, hashes.
 - **O que traduzir naturalmente:** Linguagem explicativa e didática para um Português do Brasil fluente e profissional, como um instrutor sênior de pentest escreveria.
 - **O que NUNCA fazer:** Criar duplicatas redundantes entre parênteses (ex: nunca faz `"Forward Proxy (proxy de encaminhamento)"` ou `"requisições HTTP (HTTP Requests)"`).
 
@@ -68,8 +68,8 @@ A extensão usa IA generativa (Google Gemini) com um **prompt especializado em s
 
 ### Tradução Inteligente com IA Contextual
 - Tradução por lotes com modelos `gemini-3.5-flash-lite` (rápido) e `gemini-3.5-flash` (fallback).
-- Prompt com mais de 50 regras e proibições específicas para terminologia de InfoSec.
-- Proteção automática de tags `<code>` inline com sistema de placeholders.
+- Um único prompt para página e seleção, com contexto do parágrafo e glossário opcional. Conceitos como alvo, força bruta e escalonamento de privilégios são traduzidos conforme o contexto.
+- Código e terminais ficam intactos. Somente nós de texto são alterados; links, formatação e eventos continuam funcionando.
 
 ### Popup de Configuração no Ícone da Extensão
 - **Campo de chave com máscara de asteriscos** (`type="password"`) — os caracteres ficam ocultos ao digitar.
@@ -78,12 +78,12 @@ A extensão usa IA generativa (Google Gemini) com um **prompt especializado em s
 - A chave salva é ativada **instantaneamente** em todas as abas do HTB Academy.
 
 ### Auto-Tradução de Seções (Avançar / Voltar)
-- Detecta navegação no SPA Vue.js do HTB Academy via `history.pushState`, `popstate` e `MutationObserver`.
+- Detecta mudanças de URL e conteúdo, inclusive texto carregado depois na mesma seção. Cancela traduções da seção anterior.
 - Ao clicar em **"Next Section"**, **"Previous Section"** ou selecionar lições no índice lateral, a nova seção é traduzida automaticamente.
 - Toggle on/off disponível tanto no popup quanto no widget flutuante.
 
 ### Widget Flutuante no Curso
-- Interface discreta no canto inferior direito com o tema visual oficial do Hack The Box (escuro com verde neon `#9fef00`).
+- Interface discreta no canto inferior direito com o tema visual inspirado no Hack The Box (escuro com verde neon `#9fef00`).
 - **Tradução manual** com 1 clique.
 - **Alternador EN ↔ PT-BR** instantâneo sem reprocessar pela IA (mantém cache local).
 
@@ -111,7 +111,7 @@ A extensão usa IA generativa (Google Gemini) com um **prompt especializado em s
 
 ### Pré-requisitos
 - [Google Chrome](https://www.google.com/chrome/) (versão 102 ou superior)
-- Uma **chave de API do Google Gemini** gratuita → [Obter aqui](https://aistudio.google.com/apikey)
+- Uma **chave pessoal da API do Google Gemini** → [Obter aqui](https://aistudio.google.com/apikey)
 
 ### Passos
 
@@ -140,9 +140,9 @@ A extensão usa IA generativa (Google Gemini) com um **prompt especializado em s
 
 ## 🔑 Configuração da Chave de API
 
-A extensão usa a API do **Google Gemini** para traduzir. Você precisa de uma chave pessoal e gratuita.
+A extensão usa a API do **Google Gemini** para traduzir. Cada pessoa utiliza uma chave própria; disponibilidade e limites dependem do modelo e do projeto no Google AI Studio.
 
-### Obter sua chave gratuita
+### Obter sua chave
 
 1. Acesse o [Google AI Studio](https://aistudio.google.com/apikey).
 2. Faça login com sua conta Google.
@@ -168,7 +168,7 @@ cd HTB-Context-Translator/
 ./atualizar_api.sh
 ```
 
-O script solicita a nova chave, valida-a contra a API do Google e salva no `config.js` local.
+O script solicita a chave sem exibi-la, verifica a autenticação e grava `config.js` com permissão `600`. Recarregue a extensão e as abas depois. Entre popup e terminal, vale a configuração mais recente; arquivos antigos sem data mantêm o popup como prioridade. O teste do popup também executa uma tradução curta, consumindo cota.
 
 > ⚠️ **Nenhuma chave de API é armazenada no repositório.** Veja detalhes em [Modelo de Segurança](#-modelo-de-segurança-da-chave-de-api).
 
@@ -179,7 +179,7 @@ O script solicita a nova chave, valida-a contra a API do Google e salva no `conf
 1. Acesse qualquer módulo do [HTB Academy](https://academy.hackthebox.com/).
 2. O **widget flutuante** aparecerá no canto inferior direito.
 3. Se **Auto-traduzir** estiver ativo (padrão), as seções serão traduzidas automaticamente ao navegar.
-4. Ou clique em **✨ Traduzir Página (IA)** para tradução manual.
+4. Ou clique em **Traduzir / tentar novamente** para tradução manual.
 5. Use **🔄 Ver Original (EN)** para alternar entre tradução e original instantaneamente.
 6. Para trechos avulsos: selecione o texto → botão direito → **"Traduzir seleção com Contexto HTB"**.
 
@@ -187,16 +187,16 @@ O script solicita a nova chave, valida-a contra a API do Google e salva no `conf
 
 ## 🔒 Modelo de Segurança da Chave de API
 
-Esta extensão adota o modelo **BYOK (Bring Your Own Key)**: cada usuário fornece e controla sua própria chave de API do Google Gemini. A chave **nunca** é compartilhada, coletada ou transmitida a terceiros.
+Esta extensão adota o modelo **BYOK (Bring Your Own Key)**: cada usuário fornece e controla sua própria chave de API do Google Gemini. A chave é enviada somente à API do Google. Os trechos do curso e o contexto necessário também são enviados ao Google para tradução. A organização e o owner não recebem essas chaves pela extensão.
 
 ### Como a chave é protegida
 
 | Camada | Proteção | Detalhes |
 |---|---|---|
-| **Git** | `.gitignore` | O arquivo `config.js` (que contém a chave local) está listado no `.gitignore` e **nunca** é versionado ou enviado ao GitHub. |
+| **Git** | `.gitignore` | O arquivo `config.js` (que contém a chave local) é ignorado pelo Git. Não use `git add -f`: a exclusão não protege arquivos forçadamente adicionados ou já rastreados. |
 | **Repositório** | `config.example.js` | Apenas um template com placeholder (`SUA_CHAVE_API_AQUI`) é commitado. |
 | **Chrome** | `chrome.storage.local` | A chave salva pelo popup é armazenada apenas localmente no perfil do Chrome do usuário, isolada por extensão. Não é sincronizada entre dispositivos. |
-| **Interface** | Máscara de asteriscos | O campo de entrada no popup usa `type="password"` — os caracteres ficam ocultos. A chave exibida no status é mascarada (ex: `AIzaSy••••••••••••dX4f`). |
+| **Interface** | Máscara de asteriscos | O campo de entrada no popup usa `type="password"` — os caracteres ficam ocultos. O status mostra apenas a existência e origem da configuração, sem trechos da chave. |
 | **Transmissão** | HTTPS apenas | A chave só é enviada via HTTPS diretamente para `generativelanguage.googleapis.com`. Nenhum servidor intermediário é usado. |
 
 ### Recomendações para quem usa publicamente
@@ -205,7 +205,7 @@ Esta extensão adota o modelo **BYOK (Bring Your Own Key)**: cada usuário forne
 2. **Restrinja a chave no Google Cloud Console** → Limitar a chave apenas para a API "Generative Language".
 3. **Se suspeitar de vazamento**, revogue a chave no [Google Cloud Console](https://console.cloud.google.com/apis/credentials) e gere uma nova.
 
-> Para detalhes completos, consulte o guia [SECURITY.md](SECURITY.md).
+> A máscara não criptografa a chave: quem tem acesso ao seu perfil do navegador pode inspecioná-la. Não distribua uma chave da organização junto com a extensão. Veja [SECURITY.md](SECURITY.md) e a [orientação oficial do Google](https://ai.google.dev/gemini-api/docs/api-key).
 
 ---
 
@@ -232,9 +232,9 @@ Esta extensão adota o modelo **BYOK (Bring Your Own Key)**: cada usuário forne
 │  │       background.js                 │                │
 │  │     (Service Worker MV3)            │                │
 │  │                                     │                │
-│  │  • obterApiKey() [storage > config] │                │
-│  │  • chamarGemini() [flash-lite/flash]│                │
-│  │  • SYSTEM_PROMPT (50+ regras)       │                │
+│  │  • credential() [mais recente]     │                │
+│  │  • translate() [flash-lite/flash]  │                │
+│  │  • SYSTEM_PROMPT (contexto)        │                │
 │  │  • Context Menu handler             │                │
 │  └───────────────┬─────────────────────┘                │
 │                  │ HTTPS                                 │
@@ -255,9 +255,9 @@ Esta extensão adota o modelo **BYOK (Bring Your Own Key)**: cada usuário forne
 |---|---|
 | **Manifest V3** | Padrão atual para extensões Chrome (service worker, permissions model) |
 | **Google Gemini API** | Motor de IA generativa para tradução contextual |
-| **chrome.storage.local** | Persistência segura de preferências e chave de API |
+| **chrome.storage.local** | Persistência local; chave acessível apenas aos contextos da extensão |
 | **MutationObserver** | Detecção de novo conteúdo injetado no DOM pela SPA Vue.js |
-| **History API hooks** | Interceptação de `pushState`/`replaceState` para navegação SPA |
+| **URL + eventos de navegação** | Detecta avanço/retorno sem substituir funções da página |
 
 ---
 
@@ -275,7 +275,9 @@ htb-context-translator/
 └── HTB-Context-Translator/          # 📦 Pasta da extensão (carregar no Chrome)
     ├── manifest.json                # Manifesto V3 da extensão
     ├── background.js                # Service Worker: API Gemini + prompt IA
-    ├── content.js                   # Content script: widget, tradução, navegação SPA
+    ├── content.js                   # Texto, cache, widget e navegação
+    ├── translation-guard.js         # Proteção contra tradução sobreposta
+    ├── models.json                  # Modelos usados pela API
     ├── styles.css                   # Estilos do widget e popups no curso
     ├── popup.html                   # Interface do popup (ícone da extensão)
     ├── popup.css                    # Estilos do popup (tema HTB dark)
@@ -292,37 +294,15 @@ htb-context-translator/
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Estado atual e próximos passos
 
-### ✅ v1.0 — Base Funcional
-- [x] Extensão Manifest V3 com service worker
-- [x] Tradução por lotes via Google Gemini API
-- [x] Widget flutuante com tema HTB
-- [x] Proteção de blocos `<code>` com placeholders
-- [x] Toggle instantâneo EN ↔ PT-BR
-- [x] Menu de contexto para seleções avulsas
-- [x] Script CLI para atualizar chave de API
+A revisão **1.3.1** corrige a inicialização, preserva o DOM, conecta o glossário, valida respostas do Gemini e resolve erros de cache e navegação. Mantém chave mascarada, seleção, alternância EN/PT-BR, progresso por lote e animação com respeito à preferência por movimento reduzido.
 
-### ✅ v1.2 — Popup, Auto-Tradução e Prompt Avançado
-- [x] Popup no ícone com campo de API mascarado por asteriscos
-- [x] Testador de conexão com a API Gemini em tempo real
-- [x] Auto-tradução de seções ao navegar (Next/Previous/Sidebar)
-- [x] Detecção de navegação SPA via History API + MutationObserver
-- [x] Prompt revisado com proibições estritas contra duplicatas redundantes
-- [x] Prioridade de chave: `chrome.storage.local` > `config.js`
+O cache por seção, texto original e contexto dura a sessão da aba, tem limite de tamanho e deixa de ser usado quando o glossário muda. Falhas de API mantêm o original e mostram uma mensagem; não há repetição automática ilimitada.
 
-### 🔜 v1.3 — Melhorias Planejadas
-- [ ] Cache de traduções por seção (evitar reprocessar ao revisitar)
-- [ ] Indicador de progresso por parágrafo durante a tradução
-- [ ] Suporte a atalho de teclado (ex: `Ctrl+Shift+T` para traduzir)
-- [ ] Exportar tradução da seção como PDF ou Markdown
-- [ ] Seletor de idioma alvo (pt-BR, es, fr, etc.)
+A proteção contra Google Tradutor começa em `document_start`. Se a página já estiver traduzida, tenta uma única recarga por seção para recuperar o original. Se o Chrome continuar traduzindo, use **Mostrar original**; a extensão aguarda sem enviar a tradução do Google à IA. Isso não altera a configuração global do navegador.
 
-### 🔮 Futuro
-- [ ] Publicação na Chrome Web Store
-- [ ] Backend proxy opcional para quem não quer gerenciar chave de API
-- [ ] Suporte a outros modelos de IA (OpenAI, Anthropic, local via Ollama)
-- [ ] Glossário técnico personalizável pelo usuário
+Plano curto e orientado ao objetivo: [PLANO_MELHORIAS.md](PLANO_MELHORIAS.md). Resultados e limites dos testes: [REVISAO.md](REVISAO.md).
 
 ---
 
@@ -330,8 +310,8 @@ htb-context-translator/
 
 Este é um projeto de código aberto criado pela comunidade e **não possui afiliação, patrocínio ou endosso oficial do Hack The Box ou do Google**.
 
-- A extensão **não** burla paywalls, **não** distribui material VIP/pago e **não** armazena conteúdo protegido por direitos autorais.
-- A tradução ocorre estritamente do lado do cliente (no seu navegador), modificando apenas a visualização (DOM) das páginas que você já tem acesso legítimo via sua conta no HTB Academy.
+- A extensão **não** burla paywalls, **não** distribui material VIP/pago e só atua nas seções às quais você tem acesso. O cache de tradução fica na sessão da aba.
+- O Gemini processa os textos enviados; a extensão modifica apenas a visualização (DOM) das páginas que você já tem acesso legítimo via sua conta no HTB Academy.
 - A responsabilidade pelo uso e guarda das chaves de API do Google Gemini recai inteiramente sobre o usuário final.
 
 ---
@@ -363,6 +343,6 @@ Este projeto é distribuído sob a licença **MIT**. Veja o arquivo [LICENSE](LI
 
 **Desenvolvido com 💚 para a comunidade de Cibersegurança brasileira**
 
-*Feito por [NexusGuard-Labs](https://github.com/NexusGuard-Labs)*
+*Organização responsável: [NexusGuard-Labs](https://github.com/NexusGuard-Labs). Owner: [Mid-night2026](https://github.com/Mid-night2026).*
 
 </div>

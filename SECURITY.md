@@ -1,91 +1,32 @@
-# Política de Segurança — HTB Context Translator
+# Segurança e privacidade — HTB Context Translator
 
-## Versões Suportadas
+Organização responsável: [NexusGuard-Labs](https://github.com/NexusGuard-Labs). Owner: [Mid-night2026](https://github.com/Mid-night2026). A linha em revisão é a 1.3.1; use a versão mais recente disponibilizada pela organização.
 
-| Versão | Suporte |
-|---|---|
-| 1.2.x (atual) | ✅ Recebe atualizações de segurança |
-| < 1.2 | ❌ Sem suporte |
+## Chaves pessoais
 
----
+Cada usuário fornece sua própria chave Gemini, inclusive o owner. A extensão não distribui uma chave compartilhada da organização. O popup mantém o campo mascarado e não mostra partes da chave salva. Isso protege a exibição, **não criptografa o armazenamento**: alguém com acesso ao perfil do navegador ou ao arquivo local pode inspecioná-la.
 
-## Reportando uma Vulnerabilidade
+A chave fica no `chrome.storage.local` do perfil, com acesso limitado aos contextos da extensão por `setAccessLevel(TRUSTED_CONTEXTS)`, ou em `config.js` ignorado pelo Git. O script de terminal grava esse arquivo atomicamente com permissão `600`. A configuração mais recente entre popup e script prevalece após recarregar a extensão.
 
-Se você encontrar uma vulnerabilidade de segurança neste projeto, **NÃO abra uma issue pública**.
+A extensão envia a chave por HTTPS no cabeçalho `x-goog-api-key` exclusivamente a `generativelanguage.googleapis.com`. Textos selecionados, fragmentos do curso, o contexto do parágrafo e termos do glossário também vão para o Google para gerar a tradução. A organização não recebe esses dados pela extensão. Consulte as condições do serviço Google aplicáveis ao seu projeto antes de enviar conteúdo sensível.
 
-### Como reportar
+## Publicação do código
 
-1. **Método preferido:** Use o botão **"Report a vulnerability"** na aba [Security](https://github.com/NexusGuard-Labs/htb-context-translator/security) deste repositório. O GitHub mantém o relatório privado até a correção ser publicada.
+- Distribua somente o código e `config.example.js`. Não inclua `config.js`, arquivos `.env`, perfis do Chrome ou exportações do storage.
+- `.gitignore` evita inclusão acidental; não protege contra `git add -f` nem remove segredos do histórico.
+- Nunca coloque uma chave da organização no pacote público. Conforme a [orientação do Google](https://ai.google.dev/gemini-api/docs/api-key), segredos embutidos em aplicativos cliente podem ser extraídos.
+- Restrinja sua chave à API Gemini, acompanhe as cotas e revogue uma chave que tenha sido exposta. Não publique a chave em issues, PRs ou screenshots.
 
-2. **Método alternativo:** Envie um e-mail para o mantenedor descrevendo:
-   - Descrição da vulnerabilidade
-   - Passos para reproduzir
-   - Impacto potencial
-   - Sugestão de correção (se tiver)
+## Conteúdo e permissões
 
-### O que esperar
+A extensão atua em `academy.hackthebox.com`. Requisições externas saem pelo background; o content script não recebe a chave. Mensagens de configuração só são aceitas da página do popup da própria extensão. Traduções são tratadas como texto, nunca executadas como HTML ou JavaScript.
 
-- **Confirmação** do recebimento em até **5 dias úteis**.
-- **Avaliação e correção** em até **30 dias**, dependendo da gravidade.
-- Você será creditado na release de correção (se desejar).
+O cache mantém traduções no `sessionStorage` da aba, limitado por tamanho, e pode ser lido pelo próprio site, como outros dados dessa origem. Não contém a chave. Fechar a sessão da aba normalmente descarta esse cache; a restauração de sessão do navegador pode preservá-lo. Não há backend ou telemetria da organização.
 
----
+A proteção contra Google Tradutor detecta sinais do DOM e tenta recuperar o original uma vez por seção. Não controla configurações globais do Chrome e não garante detectar todas as versões de tradutores externos.
 
-## Modelo de Segurança da Chave de API
+Referência do armazenamento: [documentação do Chrome](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
-Esta extensão adota o modelo **BYOK (Bring Your Own Key)**. Cada usuário fornece e gerencia sua própria chave de API do Google Gemini.
+## Reportar vulnerabilidades
 
-### Garantias de segurança do projeto
-
-| Garantia | Detalhes |
-|---|---|
-| **Zero hardcoding** | Nenhuma chave de API, token ou credencial é armazenada no código-fonte ou no repositório Git. |
-| **`.gitignore` ativo** | O arquivo `config.js` (que pode conter uma chave local) está protegido pelo `.gitignore` e nunca é versionado. |
-| **Template seguro** | Apenas `config.example.js` com placeholder (`SUA_CHAVE_API_AQUI`) é commitado. |
-| **Storage local** | A chave salva pelo popup é armazenada em `chrome.storage.local`, isolada no perfil do Chrome do usuário. Não é sincronizada entre dispositivos nem acessível por outros sites. |
-| **Interface mascarada** | O campo de entrada da chave usa `type="password"` e a exibição no status é mascarada (ex: `AIzaSy••••••dX4f`). |
-| **Transmissão segura** | A chave é enviada exclusivamente via HTTPS para `generativelanguage.googleapis.com`. Nenhum servidor intermediário, backend próprio ou terceiro recebe a chave. |
-| **Sem telemetria** | A extensão não coleta, transmite ou registra dados de uso, navegação ou credenciais. |
-
-### Responsabilidade do usuário
-
-- **Gere sua própria chave** em [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
-- **Nunca compartilhe sua chave** com terceiros.
-- **Restrinja a chave** no [Google Cloud Console](https://console.cloud.google.com/apis/credentials):
-  - Limite a chave apenas para a API *"Generative Language API"*.
-  - Se possível, restrinja por referrer HTTP.
-- **Se suspeitar de vazamento**, revogue a chave imediatamente no Google Cloud Console e gere uma nova.
-- **Não commite `config.js`** — ele está no `.gitignore`, mas se você modificar o `.gitignore`, verifique antes de dar push.
-
-### O que este projeto NÃO faz
-
-- ❌ Não coleta, armazena ou transmite sua chave para qualquer servidor além da API oficial do Google.
-- ❌ Não sincroniza a chave entre dispositivos (não usa `chrome.storage.sync`).
-- ❌ Não ofusca nem codifica a chave como medida de segurança (ofuscação não é segurança).
-- ❌ Não opera um backend proxy (todas as chamadas vão direto do navegador para o Google).
-
----
-
-## Práticas de Desenvolvimento Seguro
-
-Contribuidores devem seguir estas regras:
-
-1. **Nunca commite credenciais.** Verifique com `git diff --staged` antes de cada commit.
-2. **Nunca use `0.0.0.0`** para bind de servidores de desenvolvimento. Use `127.0.0.1` ou `localhost`.
-3. **Nunca gere padrões de reverse shell** ou código de execução remota sem filtros.
-4. **Valide inputs.** Chaves de API devem ser validadas por formato antes de serem usadas.
-5. **Use HTTPS.** Todas as chamadas de rede devem usar HTTPS.
-
----
-
-## Divulgação Responsável
-
-Este projeto segue o princípio de **Coordinated Vulnerability Disclosure (CVD)**:
-
-1. O pesquisador reporta a vulnerabilidade de forma privada.
-2. O mantenedor confirma e avalia o impacto.
-3. Uma correção é desenvolvida e testada.
-4. A correção é publicada em uma nova release.
-5. Somente após a publicação da correção, os detalhes da vulnerabilidade são divulgados.
-
-Agradecemos a colaboração de pesquisadores de segurança que ajudam a manter este projeto seguro para todos.
+Use [Report a vulnerability](https://github.com/NexusGuard-Labs/htb-context-translator/security/advisories/new) se o recurso estiver habilitado. Se não estiver, procure o owner sem divulgar credenciais ou detalhes de exploração em uma issue pública. Inclua versão, passos de reprodução e impacto, com dados de teste.

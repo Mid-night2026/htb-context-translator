@@ -205,3 +205,10 @@
 [data-htb-translated="true"] {
   transition: background-color 0.3s ease;
 }
+
+#htb-translator-widget[hidden], #htb-translator-widget [hidden] { display: none !important; }
+#htb-status-badge.error { color: #fca5a5; white-space: normal; max-width: 300px; }
+.htb-selection-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.htb-fade-in { animation: htb-fade-in .25s ease-out; }
+@keyframes htb-fade-in { from { opacity: .5; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .htb-fade-in { animation: none; } }

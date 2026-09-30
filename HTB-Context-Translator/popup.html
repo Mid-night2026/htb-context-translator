@@ -14,7 +14,7 @@
         <span class="logo-icon">🛡️</span>
         <div>
           <h1>HTB Translator</h1>
-          <span class="subtitle">Contextual AI • v1.2</span>
+          <span class="subtitle">Contextual AI • v1.3.1</span>
         </div>
       </div>
       <span id="header-status-badge" class="badge badge-idle">Pronto</span>
@@ -33,14 +33,14 @@
     <section class="card">
       <div class="card-label">Configurar Nova Chave de API</div>
       <div class="input-group">
-        <input 
-          type="password" 
-          id="api-key-input" 
-          placeholder="Insira sua chave (AIzaSy...)" 
-          autocomplete="off" 
+        <input
+          type="password"
+          id="api-key-input" aria-label="Nova chave de API"
+          placeholder="Insira sua chave (AIzaSy...)"
+          autocomplete="off"
           spellcheck="false"
         >
-        <button type="button" id="toggle-visibility" class="btn-icon" title="Mostrar/Ocultar caracteres">
+        <button type="button" id="toggle-visibility" aria-label="Mostrar chave" aria-pressed="false" class="btn-icon" title="Mostrar/Ocultar caracteres">
           👁️
         </button>
       </div>
@@ -54,15 +54,15 @@
         </button>
       </div>
 
-      <div id="api-feedback" class="feedback-box" style="display: none;"></div>
+      <div id="api-feedback" role="status" aria-live="polite" class="feedback-box" style="display: none;"></div>
     </section>
 
-    
+
     <!-- Glossário Personalizável -->
     <section class="card">
       <div class="card-label">Glossário (Palavras para NÃO traduzir)</div>
       <div class="input-group">
-        <textarea id="glossary-input" rows="2" placeholder="Ex: Payload, Ticket Granting Ticket, Pivoting..." spellcheck="false" style="width: 100%; border-radius: 6px; padding: 8px; font-family: monospace; background: #1a1a2e; color: #fff; border: 1px solid #333; resize: vertical;"></textarea>
+        <textarea id="glossary-input" aria-label="Termos que devem permanecer em inglês" maxlength="2000" rows="2" placeholder="Ex: Payload, Ticket Granting Ticket, Pivoting..." spellcheck="false" style="width: 100%; border-radius: 6px; padding: 8px; font-family: monospace; background: #1a1a2e; color: #fff; border: 1px solid #333; resize: vertical;"></textarea>
       </div>
       <div class="button-row" style="margin-top: 8px;">
         <button type="button" id="btn-save-glossary" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">
@@ -80,7 +80,7 @@
           <span class="toggle-desc">Traduz seções seguintes e anteriores automaticamente ao navegar no curso.</span>
         </div>
         <label class="switch">
-          <input type="checkbox" id="auto-translate-toggle">
+          <input type="checkbox" id="auto-translate-toggle" aria-label="Traduzir seções automaticamente">
           <span class="slider"></span>
         </label>
       </div>

@@ -1,473 +1,289 @@
-// HTB Academy AI Translator - Content Script
-(function () {
+// O DOM do curso é preservado: somente nós de texto recebem traduções.
+(() => {
   'use strict';
-
-  // Configurações e estados
-  let isAutoTranslateEnabled = true; // Padrão: ativado para traduzir seções seguintes/anteriores automaticamente
-  let currentLanguage = 'en'; // 'en' ou 'pt'
-  let isTranslating = false;
-  let lastTranslatedUrl = '';
-  let autoTranslateTimer = null;
-  let navMutationObserver = null;
-
-  // Carrega preferências salvas no storage
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['htbAutoTranslate'], (res) => {
-      if (res.htbAutoTranslate !== undefined) {
-        isAutoTranslateEnabled = !!res.htbAutoTranslate;
-      }
-      const checkbox = document.getElementById('htb-auto-check');
-      if (checkbox) checkbox.checked = isAutoTranslateEnabled;
-
-      // Se auto-tradução estiver ativa, dispara ao carregar a página inicial
-      if (isAutoTranslateEnabled) {
-        agendarAutoTraducao(1200);
-      }
-    });
-  }
-
-  // Ouve mensagens vindas do popup ou do background
-  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'trigger_translate') {
-        traduzirConteudoDaPagina();
-        sendResponse({ success: true });
-      } else if (request.action === 'set_auto_translate') {
-        isAutoTranslateEnabled = !!request.value;
-        const checkbox = document.getElementById('htb-auto-check');
-        if (checkbox) checkbox.checked = isAutoTranslateEnabled;
-        if (isAutoTranslateEnabled && currentLanguage === 'en') {
-          agendarAutoTraducao(400);
-        }
-        sendResponse({ success: true });
-      } else if (request.action === 'api_key_updated') {
-        console.log('[HTB-Translator] Nova chave de API sincronizada.');
-        sendResponse({ success: true });
-      }
-    });
-  }
-
-  // Cria ou atualiza o widget flutuante na tela do curso
-  function injetarWidget() {
-    if (document.getElementById('htb-translator-widget')) return;
-
-    const widget = document.createElement('div');
-    widget.id = 'htb-translator-widget';
-    widget.innerHTML = `
-      <div class="htb-trans-card">
-        <div class="htb-trans-header">
-          <div class="htb-trans-title">
-            <span>🛡️</span>
-            <span>HTB Translator AI</span>
-          </div>
-          <span id="htb-status-badge" class="htb-trans-badge">Pronto</span>
-        </div>
-        <div class="htb-trans-actions">
-          <button id="htb-btn-translate" class="htb-btn-primary">
-            <span>✨</span>
-            <span id="htb-btn-text">Traduzir Página (IA)</span>
-          </button>
-          <button id="htb-btn-toggle" class="htb-btn-secondary" style="display: none;">
-            <span>🔄</span>
-            <span id="htb-toggle-text">Ver Original (EN)</span>
-          </button>
-        </div>
-        <div class="htb-trans-toggle-row">
-          <label class="htb-trans-checkbox-label">
-            <input type="checkbox" id="htb-auto-check" ${isAutoTranslateEnabled ? 'checked' : ''}>
-            <span>Auto-traduzir seções (Avançar/Voltar)</span>
-          </label>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(widget);
-
-    // Eventos do Widget
-    document.getElementById('htb-btn-translate').addEventListener('click', () => {
-      traduzirConteudoDaPagina();
-    });
-
-    document.getElementById('htb-btn-toggle').addEventListener('click', () => {
-      alternarIdioma();
-    });
-
-    document.getElementById('htb-auto-check').addEventListener('change', (e) => {
-      isAutoTranslateEnabled = e.target.checked;
-      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ htbAutoTranslate: isAutoTranslateEnabled });
-      }
-      if (isAutoTranslateEnabled && currentLanguage === 'en') {
-        agendarAutoTraducao(400);
-      }
-    });
-  }
-
-  // Atualiza estado visual do widget
-  function atualizarStatus(texto, tipo = 'normal') {
-    const badge = document.getElementById('htb-status-badge');
-    const btn = document.getElementById('htb-btn-translate');
-    if (!badge || !btn) return;
-
-    badge.className = 'htb-trans-badge ' + (tipo === 'loading' ? 'loading' : tipo === 'active' ? 'active' : '');
-    badge.innerText = texto;
-    btn.disabled = (tipo === 'loading');
-  }
-
-  // Encontra os elementos de texto do curso HTB
-  
-  function gerarChaveElemento(el) {
-    const textBase = el.innerText.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '');
-    return 'htb_cache_' + btoa(unescape(encodeURIComponent(location.pathname + '_' + textBase))).substring(0, 30);
-  }
-
-  function coletarElementosTraduziveis() {
-    const container = document.querySelector('.module-content article') ||
-                      document.querySelector('.module-content') ||
-                      document.querySelector('#module-content') ||
-                      document.querySelector('article') ||
-                      document.querySelector('main');
-
-    if (!container) return [];
-
-    const seletores = 'h1, h2, h3, h4, h5, h6, p, li, blockquote, td, th';
-    let elementos = Array.from(container.querySelectorAll(seletores));
-    let filtrados = [];
-    
-    elementos.forEach(el => {
-      if (el.closest('pre') || el.closest('code') || el.closest('#htb-translator-widget')) return;
-      if (el.closest('.terminal, .xterm, .console, .pwnbox-terminal')) return;
-      if (el.closest('.question-box, form, button, nav, footer')) return;
-      if (el.dataset.htbTranslated) return;
-      
-      const texto = el.innerText.trim();
-      if (texto.length <= 5) return;
-      
-      const cacheKey = gerarChaveElemento(el);
-      const cachedHtml = sessionStorage.getItem(cacheKey);
-      
-      if (cachedHtml) {
-        if (!el.dataset.htbOriginalHtml) el.dataset.htbOriginalHtml = el.innerHTML;
-        el.innerHTML = cachedHtml;
-        el.dataset.htbTranslatedHtml = cachedHtml;
-        el.dataset.htbTranslated = 'true';
-        return; 
-      }
-      
-      filtrados.push(el);
-    });
-    
-    return filtrados;
-  }
-
-  // Obtém chave ativa para fallback direto se runtime falhar
-  async function obterApiKeyAtiva() {
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const res = await chrome.storage.local.get(['geminiApiKey']);
-      if (res.geminiApiKey && res.geminiApiKey.trim() !== '') {
-        return res.geminiApiKey.trim();
-      }
+  if (globalThis.__htbTranslatorLoaded) return;
+  globalThis.__htbTranslatorLoaded = true;
+  const BLOCKS = 'h1,h2,h3,h4,h5,h6,p,li,blockquote,td,th,figcaption';
+  const IGNORE = 'pre,code,kbd,samp,script,style,textarea,input,select,button,form,nav,footer,svg,math,[contenteditable]:not([contenteditable="false"]),[translate="no"],.notranslate,.terminal,.xterm,.console,.pwnbox-terminal,.question-box,.questions,[hidden],[aria-hidden="true"],#htb-translator-widget,#htb-selection-popup';
+  const records = new Map();
+  let glossary = '', googleBlocked = false;
+  const cache = new Map();
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('htb-translations-v2') || '[]');
+    if (Array.isArray(saved)) for (const pair of saved.slice(-200)) {
+      if (Array.isArray(pair) && typeof pair[0] === 'string' && typeof pair[1] === 'string' && pair[0].length < 12000 && pair[1].length < 32000) cache.set(...pair);
     }
-    if (typeof CONFIG !== 'undefined' && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'SUA_CHAVE_API_AQUI') {
-      return CONFIG.GEMINI_API_KEY.trim();
-    }
-    return null;
+  } catch { /* Cache indisponível não impede tradução. */ }
+  function cacheKey(record) { return JSON.stringify([route, glossary, originalContext(record.block), record.original]); }
+  function saveCache(key, value) {
+    cache.set(key, value);
+    while (cache.size > 200) cache.delete(cache.keys().next().value);
+    try {
+      let serialized = JSON.stringify([...cache]);
+      while (serialized.length > 500000 && cache.size) { cache.delete(cache.keys().next().value); serialized = JSON.stringify([...cache]); }
+      sessionStorage.setItem('htb-translations-v2', serialized);
+    } catch { /* A página continua utilizável sem armazenamento. */ }
   }
-
-  // Tradução do conteúdo da página com IA contextual
-  async function traduzirConteudoDaPagina() {
-    if (isTranslating) return;
-    const elementos = coletarElementosTraduziveis();
-
-    if (elementos.length === 0) {
-      atualizarStatus('Sem texto', 'normal');
-      return;
+  let auto = true, ready = false, showOriginal = false, failure = false;
+  let route = routeKey(), generation = 0, running = null, timer, widget, observer;
+  const guard = globalThis.htbTranslationGuard;
+  function routeKey() { return location.pathname + location.search; }
+  function isLesson() { return /\/(?:app\/)?module\/\d+\/section\/\d+\/?$/.test(location.pathname); }
+  function container() {
+    return document.querySelector('.module-content article, #module-content article') || document.querySelector('.module-content, #module-content') || document.querySelector('article') || document.querySelector('main');
+  }
+  async function message(data) {
+    try {
+      const result = await chrome.runtime.sendMessage(data);
+      if (!result?.success) throw new Error(result?.error || 'Sem resposta da extensão. Recarregue esta página.');
+      return result;
+    } catch (error) {
+      if (/context invalidated|Receiving end|message port/i.test(error.message)) throw new Error('Extensão atualizada. Recarregue esta página do HTB.');
+      throw error;
     }
-
-    isTranslating = true;
-    atualizarStatus('Iniciando...', 'loading');
-
-    const itensParaTraduzir = [];
-    elementos.forEach((el, index) => {
-      if (!el.dataset.htbOriginalHtml) {
-        el.dataset.htbOriginalHtml = el.innerHTML;
+  }
+  function status(text, loading = false, error = false) {
+    const badge = widget.querySelector('#htb-status-badge');
+    badge.textContent = text;
+    badge.className = `htb-trans-badge${loading ? ' loading' : error ? ' error' : ' active'}`;
+    widget.querySelector('#htb-btn-translate').disabled = loading;
+    widget.querySelector('#htb-btn-toggle').disabled = loading;
+  }
+  function updateToggle() {
+    widget.querySelector('#htb-btn-toggle').hidden = !Array.from(records.values()).some(r => r.translated !== null && intact(r));
+    widget.querySelector('#htb-toggle-text').textContent = showOriginal ? 'Ver Tradução (PT-BR)' : 'Ver Original (EN)';
+  }
+  function observe() { observer.observe(document.body, { childList: true, subtree: true, characterData: true }); }
+  function editText(callback) {
+    observer.disconnect();
+    try { callback(); } finally { observe(); }
+  }
+  function intact(record) { return record.node.isConnected && record.node.nodeValue === record.applied; }
+  function apply(record, value) {
+    if (!intact(record)) return false;
+    record.node.nodeValue = value; record.applied = value;
+    return true;
+  }
+  function cancel() {
+    generation++;
+    if (running) chrome.runtime.sendMessage({ action: 'cancel_translation' }).catch(() => {});
+    running = null;
+    clearTimeout(timer);
+  }
+  function checkRoute() {
+    if (routeKey() === route) return false;
+    cancel();
+    editText(() => { for (const record of records.values()) apply(record, record.original); });
+    records.clear(); route = routeKey(); showOriginal = false; failure = false;
+    widget.hidden = !isLesson(); updateToggle(); status('Nova seção'); schedule();
+    return true;
+  }
+  function originalContext(block) {
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    let result = '';
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (node.parentElement.closest('script,style,form,button,.question-box')) continue;
+      const record = records.get(node);
+      result += record && intact(record) ? record.original : node.nodeValue;
+      if (result.length > 1200) break;
+    }
+    return result.slice(0, 1200);
+  }
+  function collect() {
+    const root = container();
+    if (!root || !isLesson()) return [];
+    for (const [node, record] of records) if (!root.contains(node) || !intact(record)) records.delete(node);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), result = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest(IGNORE)) continue;
+      const block = parent.closest(BLOCKS);
+      if (!block || !root.contains(block) || !/[\p{L}]/u.test(node.nodeValue) || !parent.getClientRects().length) continue;
+      let record = records.get(node);
+      if (!record) {
+        record = { node, block, original: node.nodeValue, applied: node.nodeValue, translated: null };
+        records.set(node, record);
       }
-
-      let htmlProcessado = el.innerHTML;
-      const placeholders = [];
-      htmlProcessado = htmlProcessado.replace(/<code\b[^>]*>([\s\S]*?)<\/code>/gi, (match) => {
-        const ph = `__CODE_${placeholders.length}__`;
-        placeholders.push(match);
-        return ph;
+      if (record.translated === null) result.push(record);
+    }
+    return result;
+  }
+  function protect(text) {
+    const literals = [];
+    const pattern = /__HTB_KEEP_\d+__|`[^`\n]+`|https?:\/\/[^\s<>"']+|\b(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?\b|\b[A-Fa-f0-9]{32,128}\b|\b[A-Za-z]:\\(?:[^\s,;"'<>]+)|(?<![\w:])\/(?:[\w.-]+\/)*[\w.-]+|(?<!\w)--?[A-Za-z][\w-]*|\b(?:Burp Suite|Nmap|Metasploit|Wireshark|Cloudflare|ModSecurity|Sysmon|WinSock|libcurl|Chisel|Active Directory)\b/g;
+    return { text: text.replace(pattern, value => `__HTB_KEEP_${literals.push(value) - 1}__`), literals };
+  }
+  function restore(text, literals) {
+    const markers = text.match(/__HTB_KEEP_\d+__/g) || [];
+    if (markers.length !== literals.length || literals.some((_, i) => markers.filter(m => m === `__HTB_KEEP_${i}__`).length !== 1)) throw new Error('A IA alterou um trecho protegido. O original foi mantido.');
+    return text.replace(/__HTB_KEEP_(\d+)__/g, (_, i) => literals[Number(i)]);
+  }
+  function schedule(delay = 800) {
+    if (!ready || !auto || showOriginal || failure || !isLesson()) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (!running) void translatePage(); }, delay);
+  }
+  async function translatePage(manual = false) {
+    checkRoute();
+    if (running || !ready || !isLesson()) return;
+    if (guard && !guard.ensureOriginal()) { status('Google Tradutor ativo. Use Mostrar original no Chrome para continuar.', false, true); return; }
+    if (manual) {
+      failure = false; showOriginal = false;
+      editText(() => { for (const record of records.values()) if (record.translated !== null) apply(record, record.translated); });
+    }
+    let candidates = collect();
+    // A chave usa texto original completo e contexto antes de qualquer alteração no DOM.
+    for (const record of candidates) record.cacheKey = cacheKey(record);
+    editText(() => {
+      for (const record of candidates) {
+        const cached = cache.get(record.cacheKey);
+        if (cached !== undefined) { record.translated = cached; apply(record, cached); }
+      }
+    });
+    candidates = candidates.filter(record => record.translated === null);
+    if (!candidates.length) {
+      if (manual) editText(() => { for (const record of records.values()) if (record.translated !== null) apply(record, record.translated); });
+      updateToggle(); status(records.size ? 'Tradução disponível' : 'Aguardando texto da seção'); return;
+    }
+    const run = { generation, route, root: container() };
+    running = run;
+    const valid = () => running === run && generation === run.generation && routeKey() === run.route && container() === run.root && !guard?.isTranslated();
+    let completed = 0;
+    try {
+      const entries = candidates.map((record, id) => {
+        const protectedText = protect(record.original.trim());
+        return { record, literals: protectedText.literals, item: { id, text: protectedText.text, context: originalContext(record.block) } };
       });
-
-      itensParaTraduzir.push({
-        id: index,
-        element: el,
-        textWithPlaceholders: htmlProcessado,
-        placeholders: placeholders
-      });
-    });
-
-    const tamanhoLote = 6;
-    const lotes = [];
-    for (let i = 0; i < itensParaTraduzir.length; i += tamanhoLote) {
-      lotes.push(itensParaTraduzir.slice(i, i + tamanhoLote));
-    }
-
-    let traduzidosSucesso = 0;
-
-    for (let i = 0; i < lotes.length; i++) {
-      const lote = lotes[i];
-      atualizarStatus(`Traduzindo (${i + 1}/${lotes.length})...`, 'loading');
-
-      try {
-        const payload = lote.map(item => ({
-          id: item.id,
-          text: item.textWithPlaceholders
-        }));
-
-        let resposta = null;
-
-        // 1. Tenta enviar via runtime sendMessage ao service worker
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
-          resposta = await new Promise((resolve) => {
-            chrome.runtime.sendMessage({ action: 'translate_batch', items: payload }, (res) => {
-              if (chrome.runtime.lastError || !res || !res.success) {
-                resolve(null);
-              } else {
-                resolve(res.results);
-              }
-            });
-          });
-        }
-
-        // 2. Se runtime falhar, usa fallback com fetch direto e regras anti-duplicata
-        if (!resposta) {
-          const apiKey = await obterApiKeyAtiva();
-          if (apiKey) {
-            const sysPrompt = `Você é um tradutor especialista em Cibersegurança do HTB Academy. Traduza para pt-BR natural. PROIBIÇÃO ABSOLUTA: NUNCA coloque termos em inglês e traduções redundantes lado a lado entre parênteses (ex: NUNCA faça "Forward Proxy (proxy de encaminhamento)" ou "requisições HTTP (HTTP Requests)"). Termos consagrados (Forward Proxy, tampering, pivoting, payload, reverse shell, wordlist, etc.) DEVEM ficar estritamente em inglês sem duplicatas. Responda ESTRITAMENTE em JSON: {"translations": [{"id": number, "translatedText": string}]}`;
-            const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
-            for (const m of models) {
-              try {
-                const fetchResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    system_instruction: { parts: [{ text: sysPrompt }] },
-                    contents: [{ parts: [{ text: JSON.stringify(payload) }] }],
-                    generationConfig: { response_mime_type: 'application/json' }
-                  })
-                });
-                const j = await fetchResp.json();
-                if (j.candidates && j.candidates[0]?.content?.parts?.[0]?.text) {
-                  const parsed = JSON.parse(j.candidates[0].content.parts[0].text);
-                  resposta = parsed.translations || parsed;
-                  break;
-                }
-              } catch (err) {}
-            }
+      const batches = []; let batch = [], size = 0;
+      for (const entry of entries) {
+        const length = JSON.stringify(entry.item).length;
+        if (entry.item.text.length > 8000 || length > 18000) throw new Error('Trecho muito longo. Use a tradução por seleção para trechos menores.');
+        if (batch.length && (batch.length >= 16 || size + length > 18000)) { batches.push(batch); batch = []; size = 0; }
+        batch.push(entry); size += length;
+      }
+      if (batch.length) batches.push(batch);
+      for (let i = 0; i < batches.length; i++) {
+        if (!valid()) return;
+        const current = batches[i].filter(entry => intact(entry.record));
+        if (!current.length) continue;
+        status(`Traduzindo ${i + 1}/${batches.length}`, true);
+        const response = await message({ action: 'translate_batch', items: current.map(entry => entry.item) });
+        if (!valid()) return;
+        if (!Array.isArray(response.results) || response.results.length !== current.length) throw new Error('Resposta de tradução incompleta.');
+        const byId = new Map(response.results.map(result => [result.id, result.translatedText]));
+        if (byId.size !== current.length) throw new Error('Resposta com IDs duplicados.');
+        const translations = current.map(entry => {
+          const text = byId.get(entry.item.id), original = entry.record.original;
+          if (typeof text !== 'string' || !text.trim()) throw new Error('Resposta de tradução inválida.');
+          const value = original.match(/^\s*/)[0] + restore(text.trim(), entry.literals) + original.match(/\s*$/)[0];
+          return { entry, value };
+        });
+        editText(() => {
+          for (const { entry, value } of translations) {
+            if (!intact(entry.record)) continue;
+            entry.record.translated = value; apply(entry.record, value);
+            saveCache(entry.record.cacheKey, value);
+            entry.record.block.classList.add('htb-fade-in'); completed++;
           }
-        }
-
-        if (Array.isArray(resposta)) {
-          resposta.forEach(resItem => {
-            const matchItem = lote.find(it => it.id === resItem.id || it.id === resItem.idx);
-            if (matchItem && resItem.translatedText) {
-              let htmlFinal = resItem.translatedText;
-              matchItem.placeholders.forEach((codeTag, idx) => {
-                htmlFinal = htmlFinal.split(`__CODE_${idx}__`).join(codeTag);
-              });
-
-              matchItem.element.innerHTML = htmlFinal;
-              matchItem.element.classList.add('htb-fade-in');
-              matchItem.element.dataset.htbTranslatedHtml = htmlFinal;
-              matchItem.element.dataset.htbTranslated = 'true';
-              
-              // Salvar no Cache
-              try {
-                const cacheKey = gerarChaveElemento(matchItem.element);
-                sessionStorage.setItem(cacheKey, htmlFinal);
-              } catch(e) {}
-              
-              traduzidosSucesso++;
-            }
-          });
-        }
-      } catch (erro) {
-        console.error('[HTB-Translator] Erro no lote:', erro);
+        });
+      }
+      if (valid()) status('Tradução concluída');
+    } catch (error) {
+      if (valid()) { failure = true; status(`${completed ? 'Tradução parcial. ' : ''}${error.message}`, false, true); }
+    } finally {
+      if (running === run) {
+        running = null; updateToggle();
+        if (!failure && !showOriginal && auto && collect().length) schedule();
       }
     }
-
-    isTranslating = false;
-    currentLanguage = 'pt';
-    lastTranslatedUrl = location.href;
-
-    if (traduzidosSucesso > 0) {
-      atualizarStatus('✅ Traduzido', 'active');
-      const toggleBtn = document.getElementById('htb-btn-toggle');
-      if (toggleBtn) {
-        toggleBtn.style.display = 'flex';
-        document.getElementById('htb-toggle-text').innerText = 'Ver Original (EN)';
-      }
-      document.getElementById('htb-btn-text').innerText = 'Re-traduzir';
-    } else {
-      atualizarStatus('Erro na tradução', 'normal');
+  }
+  function toggleLanguage() {
+    if (running) return;
+    showOriginal = !showOriginal; clearTimeout(timer);
+    editText(() => { for (const record of records.values()) if (record.translated !== null) apply(record, showOriginal ? record.original : record.translated); });
+    updateToggle(); status(showOriginal ? 'Original (EN)' : 'Tradução (PT-BR)');
+    if (!showOriginal) schedule();
+  }
+  function setPreferences(preferences) {
+    const previous = auto; auto = preferences.autoTranslate;
+    if (typeof preferences.glossary === 'string' && preferences.glossary !== glossary) {
+      cancel(); failure = false;
+      editText(() => { for (const record of records.values()) apply(record, record.original); });
+      records.clear(); cache.clear(); glossary = preferences.glossary; showOriginal = false; updateToggle(); schedule();
     }
+    widget.querySelector('#htb-auto-check').checked = auto;
+    if (!auto) { cancel(); status('Auto-tradução desativada'); }
+    else if (!previous) { failure = false; schedule(); }
   }
-
-  // Alterna entre Português e Inglês original instantaneamente
-  function alternarIdioma() {
-    const elementos = document.querySelectorAll('[data-htb-original-html]');
-    if (elementos.length === 0) return;
-
-    const toggleText = document.getElementById('htb-toggle-text');
-
-    if (currentLanguage === 'pt') {
-      elementos.forEach(el => {
-        if (el.dataset.htbOriginalHtml) {
-          el.innerHTML = el.dataset.htbOriginalHtml;
-        }
-      });
-      currentLanguage = 'en';
-      if (toggleText) toggleText.innerText = 'Ver Tradução (PT-BR)';
-      atualizarStatus('Original (EN)', 'normal');
-    } else {
-      elementos.forEach(el => {
-        if (el.dataset.htbTranslatedHtml) {
-          el.innerHTML = el.dataset.htbTranslatedHtml;
-        }
-      });
-      currentLanguage = 'pt';
-      if (toggleText) toggleText.innerText = 'Ver Original (EN)';
-      atualizarStatus('✅ Traduzido', 'active');
+  function selection(text) {
+    let popup = document.getElementById('htb-selection-popup');
+    if (!popup) {
+      popup = document.createElement('div'); popup.id = 'htb-selection-popup';
+      const header = document.createElement('div'); header.className = 'htb-popup-header'; header.textContent = 'Tradução HTB';
+      const close = document.createElement('button'); close.className = 'htb-close-btn'; close.textContent = '×'; close.setAttribute('aria-label', 'Fechar tradução'); close.onclick = () => popup.remove();
+      header.append(close);
+      const body = document.createElement('div'); body.className = 'htb-selection-text'; popup.append(header, body); document.body.append(popup);
     }
+    popup.querySelector('.htb-selection-text').textContent = text;
   }
-
-  // Agenda auto-tradução garantindo estabilização do DOM
-  function agendarAutoTraducao(delayMs = 800) {
-    if (!isAutoTranslateEnabled) return;
-    if (autoTranslateTimer) clearTimeout(autoTranslateTimer);
-
-    autoTranslateTimer = setTimeout(() => {
-      const elementos = coletarElementosTraduziveis();
-      // Verifica se existem elementos que ainda não foram traduzidos
-      const precisaTraduzir = elementos.length > 0 && elementos.some(el => !el.dataset.htbTranslated);
-      if (precisaTraduzir && !isTranslating) {
-        traduzirConteudoDaPagina();
-      }
-    }, delayMs);
-  }
-
-  // Notifica transição de seção (ao clicar em próximo, anterior ou mudar URL)
-  function tratarMudancaDeSecao() {
-    currentLanguage = 'en';
-    const toggleBtn = document.getElementById('htb-btn-toggle');
-    if (toggleBtn) toggleBtn.style.display = 'none';
-    atualizarStatus('Nova seção...', 'loading');
-
-    if (isAutoTranslateEnabled) {
-      agendarAutoTraducao(900);
-    } else {
-      atualizarStatus('Pronto', 'normal');
-    }
-  }
-
-  // Monitora navegação no SPA do HTB Academy (Vue/Nuxt)
-  function monitorarNavegacao() {
-    let urlAtual = location.href;
-
-    // 1. Intercepta pushState e replaceState do HTML5 History API
-    const originalPushState = history.pushState;
-    history.pushState = function (...args) {
-      originalPushState.apply(this, args);
-      window.dispatchEvent(new Event('htb-nav-event'));
+  async function init() {
+    widget = document.createElement('div'); widget.id = 'htb-translator-widget'; widget.hidden = !isLesson();
+    widget.innerHTML = `<div class="htb-trans-card">
+      <div class="htb-trans-header"><span class="htb-trans-title">🛡️ HTB Translator AI</span></div>
+      <div id="htb-status-badge" class="htb-trans-badge" role="status" aria-live="polite">Pronto</div>
+      <div class="htb-trans-actions"><button id="htb-btn-translate" class="htb-btn-primary">Traduzir / tentar novamente</button>
+      <button id="htb-btn-toggle" class="htb-btn-secondary" hidden><span id="htb-toggle-text">Ver Original (EN)</span></button></div>
+      <label class="htb-trans-checkbox-label htb-trans-toggle-row"><input type="checkbox" id="htb-auto-check" checked>Auto-traduzir ao avançar e voltar</label></div>`;
+    document.body.append(widget);
+    widget.querySelector('#htb-btn-translate').onclick = () => void translatePage(true);
+    widget.querySelector('#htb-btn-toggle').onclick = toggleLanguage;
+    widget.querySelector('#htb-auto-check').onchange = async event => {
+      const value = event.target.checked; setPreferences({ autoTranslate: value });
+      try { await message({ action: 'set_auto_translate', value }); } catch (error) { status(error.message, false, true); }
     };
-
-    const originalReplaceState = history.replaceState;
-    history.replaceState = function (...args) {
-      originalReplaceState.apply(this, args);
-      window.dispatchEvent(new Event('htb-nav-event'));
-    };
-
-    // 2. Eventos de navegação do browser
-    window.addEventListener('popstate', () => window.dispatchEvent(new Event('htb-nav-event')));
-    window.addEventListener('htb-nav-event', () => {
-      if (location.href !== urlAtual) {
-        urlAtual = location.href;
-        tratarMudancaDeSecao();
-      }
+    observer = new MutationObserver(mutations => {
+      if (checkRoute()) return;
+      if (guard?.isTranslated()) return;
+      const relevant = mutations.some(m => {
+        const el = m.target.nodeType === Node.ELEMENT_NODE ? m.target : m.target.parentElement;
+        return el && !el.closest('#htb-translator-widget,#htb-selection-popup') && (container()?.contains(el) || m.type === 'childList' && Array.from(m.addedNodes).some(n => n.nodeType === Node.ELEMENT_NODE && (n.matches('article,main,.module-content,#module-content') || n.querySelector('article,main,.module-content,#module-content'))));
+      });
+      if (relevant) schedule();
     });
-
-    // 3. Polling de segurança (caso o framework use rotas sem acionar pushState padrão)
+    observe();
+    // A página e o content script usam mundos JS diferentes: não sobrescreve history.pushState.
     setInterval(() => {
-      if (location.href !== urlAtual) {
-        urlAtual = location.href;
-        tratarMudancaDeSecao();
-      }
-    }, 700);
-
-    // 4. Delegação de cliques nos botões de Próxima/Anterior/Módulos
-    document.addEventListener('click', (e) => {
-      const el = e.target.closest('a, button');
-      if (!el) return;
-
-      const href = el.getAttribute('href') || '';
-      const texto = (el.innerText || '').toLowerCase();
-
-      if (
-        href.includes('/section/') ||
-        texto.includes('next') ||
-        texto.includes('próxim') ||
-        texto.includes('previous') ||
-        texto.includes('anterior') ||
-        texto.includes('complete & next')
-      ) {
-        // Dispara verificação rápida logo após o clique
-        setTimeout(tratarMudancaDeSecao, 300);
-      }
-    }, true);
-
-    // 5. MutationObserver no container principal para detectar injeção de novo conteúdo
-    const targetNode = document.querySelector('.module-content') || document.body;
-    if (window.MutationObserver && targetNode) {
-      navMutationObserver = new MutationObserver((mutations) => {
-        if (!isAutoTranslateEnabled || isTranslating) return;
-
-        // Se houver nós adicionados com tags de texto não traduzidas
-        let temNovoTexto = false;
-        for (const m of mutations) {
-          if (m.addedNodes.length > 0) {
-            for (const node of m.addedNodes) {
-              if (node.nodeType === 1 && (node.matches('article, p, h1, h2, h3, li') || node.querySelector?.('p, article'))) {
-                temNovoTexto = true;
-                break;
-              }
-            }
-          }
-          if (temNovoTexto) break;
+      if (checkRoute() || !isLesson()) return;
+      if (guard?.isTranslated()) {
+        if (!googleBlocked) {
+          googleBlocked = true; cancel();
+          status('Google Tradutor ativo. Use Mostrar original no Chrome para continuar.', false, true);
+          guard.ensureOriginal();
         }
-
-        if (temNovoTexto && location.href !== lastTranslatedUrl) {
-          agendarAutoTraducao(800);
-        }
-      });
-
-      navMutationObserver.observe(targetNode, { childList: true, subtree: true });
-    }
-  }
-
-  // Inicialização no DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      injetarEstilosPage();
-      injetarWidget();
-      monitorarNavegacao();
+      } else if (googleBlocked) { googleBlocked = false; failure = false; schedule(); }
+    }, 500);
+    window.addEventListener('popstate', () => { checkRoute(); });
+    window.addEventListener('pageshow', () => { checkRoute(); schedule(); });
+    chrome.runtime.onMessage.addListener((request, sender, respond) => {
+      if (sender.id !== chrome.runtime.id) return false;
+      if (request.action === 'trigger_translate') {
+        if (!isLesson()) { respond({ success: false, error: 'Abra uma seção de curso do HTB Academy.' }); return false; }
+        void translatePage(true); respond({ success: true });
+      } else if (request.action === 'preferences_updated' || request.action === 'glossary_updated') setPreferences(request);
+      else if (request.action === 'api_key_updated') { cancel(); failure = false; setPreferences(request); schedule(); }
+      else if (request.action === 'selection_context') {
+        const selected = window.getSelection();
+        const node = selected?.anchorNode;
+        const parent = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+        const block = parent?.closest(BLOCKS);
+        respond({ success: !guard?.isTranslated(), context: block ? originalContext(block) : '' });
+      }
+      else if (request.action === 'selection_result') selection(request.text);
+      return false;
     });
-  } else {
-    injetarEstilosPage();
-      injetarWidget();
-    monitorarNavegacao();
+    try { setPreferences(await message({ action: 'get_settings' })); ready = true; schedule(); }
+    catch (error) { status(error.message, false, true); }
   }
-
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
+  else void init();
 })();
