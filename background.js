@@ -1,15 +1,25 @@
 // HTB Academy AI Translator - Background Service Worker
 'use strict';
 
+try {
+  importScripts('config.js');
+} catch (e) {}
+
 const api = globalThis.chrome || globalThis.browser;
 
-// Recupera a API key do storage da extensão
+// Recupera a API key do storage da extensão ou fallback config.js
 async function obterApiKey() {
   if (api && api.storage && api.storage.local) {
-    const data = await api.storage.local.get(['geminiApiKey']);
+    const data = await api.storage.local.get(['geminiApiKey', 'htbApiKey']);
     if (data.geminiApiKey && data.geminiApiKey.trim() !== '') {
       return data.geminiApiKey.trim();
     }
+    if (data.htbApiKey && data.htbApiKey.trim() !== '') {
+      return data.htbApiKey.trim();
+    }
+  }
+  if (typeof CONFIG !== 'undefined' && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'SUA_CHAVE_API_AQUI') {
+    return CONFIG.GEMINI_API_KEY.trim();
   }
   return null;
 }
