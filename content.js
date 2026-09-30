@@ -133,9 +133,21 @@
 
   // Encontra os elementos de texto do curso HTB
   
+  // Limpa chaves corrompidas antigas do sessionStorage
+  try {
+    Object.keys(sessionStorage).forEach(k => {
+      if (k.startsWith('htb_cache_')) sessionStorage.removeItem(k);
+    });
+  } catch(e) {}
+
   function gerarChaveElemento(el) {
-    const textBase = el.innerText.substring(0, 50).replace(/[^a-zA-Z0-9]/g, '');
-    return 'htb_cache_' + btoa(unescape(encodeURIComponent(location.pathname + '_' + textBase))).substring(0, 30);
+    const str = el.innerText.trim();
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return 'htb_v2_' + location.pathname.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Math.abs(hash);
   }
 
   function coletarElementosTraduziveis() {
@@ -317,10 +329,11 @@ REGRAS ABSOLUTAS:
         }
 
         if (Array.isArray(resposta)) {
-          resposta.forEach(resItem => {
-            const matchItem = lote.find(it => it.id === resItem.id || it.id === resItem.idx);
-            if (matchItem && resItem.translatedText) {
-              let htmlFinal = resItem.translatedText;
+          resposta.forEach((resItem, resIdx) => {
+            const matchItem = lote.find(it => it.id === resItem.id) || lote[resIdx];
+            const textoTraduzido = resItem.translatedText || (typeof resItem === 'string' ? resItem : null);
+            if (matchItem && textoTraduzido) {
+              let htmlFinal = textoTraduzido;
               matchItem.placeholders.forEach((codeTag, idx) => {
                 htmlFinal = htmlFinal.split(`__CODE_${idx}__`).join(codeTag);
               });

@@ -69,7 +69,7 @@ async function chamarGemini(payload, systemInstruction = SYSTEM_PROMPT) {
     throw new Error('Chave de API do Gemini não configurada.');
   }
 
-  const modelos = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+  const modelos = ['gemini-1.5-flash', 'gemini-1.5-flash-8b'];
   let ultimoErro = null;
 
   for (const modelo of modelos) {
@@ -177,7 +177,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     try {
       const apiKey = await obterApiKey();
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
