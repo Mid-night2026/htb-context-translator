@@ -1,0 +1,207 @@
+/* HTB Academy AI Translator - Estilos */
+
+#htb-translator-widget {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+}
+
+.htb-trans-card {
+  background: #111927;
+  border: 1px solid #1e293b;
+  border-left: 3px solid #9fef00;
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  min-width: 250px;
+  transition: all 0.2s ease-in-out;
+}
+
+.htb-trans-card:hover {
+  border-color: #334155;
+  border-left-color: #9fef00;
+  box-shadow: 0 12px 28px -4px rgba(159, 239, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
+}
+
+.htb-trans-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.htb-trans-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9fef00;
+}
+
+.htb-trans-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: #1e293b;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.htb-trans-badge.active {
+  background: rgba(159, 239, 0, 0.15);
+  color: #9fef00;
+  border: 1px solid rgba(159, 239, 0, 0.3);
+}
+
+.htb-trans-badge.loading {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.htb-trans-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.htb-btn-primary {
+  background: #9fef00;
+  color: #0b0f19;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.htb-btn-primary:hover {
+  background: #aeff1a;
+  transform: translateY(-1px);
+}
+
+.htb-btn-primary:active {
+  transform: translateY(0);
+}
+
+.htb-btn-primary:disabled {
+  background: #334155;
+  color: #64748b;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.htb-btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.htb-btn-secondary:hover {
+  background: #273549;
+  color: #fff;
+  border-color: #475569;
+}
+
+.htb-trans-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #1e293b;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.htb-trans-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.htb-trans-checkbox-label input {
+  accent-color: #9fef00;
+  cursor: pointer;
+}
+
+/* Modal flutuante para tradução de seleção */
+#htb-selection-popup {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #111927;
+  border: 1px solid #1e293b;
+  border-left: 4px solid #9fef00;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: #e2e8f0;
+  z-index: 2147483647;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+  line-height: 1.6;
+}
+
+#htb-selection-popup .htb-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-weight: bold;
+  font-size: 12px;
+  color: #9fef00;
+  text-transform: uppercase;
+}
+
+#htb-selection-popup .htb-close-btn {
+  background: transparent;
+  color: #94a3b8;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+#htb-selection-popup .htb-close-btn:hover {
+  background: #1e293b;
+  color: #f87171;
+}
+
+/* Indicador suave nos blocos traduzidos */
+[data-htb-translated="true"] {
+  transition: background-color 0.3s ease;
+}
