@@ -47,6 +47,23 @@
     });
   }
 
+  // Injeta estilos da extensão na página
+  function injetarEstilosPage() {
+    if (document.getElementById('htb-page-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'htb-page-styles';
+    style.textContent = `
+      .htb-fade-in {
+        animation: htbFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+      }
+      @keyframes htbFadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   // Cria ou atualiza o widget flutuante na tela do curso
   function injetarWidget() {
     if (document.getElementById('htb-translator-widget')) return;
