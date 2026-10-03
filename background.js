@@ -135,10 +135,21 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
           resultadoParsed = JSON.parse(respostaTexto);
         } catch (e) {
-          const match = respostaTexto.match(/\{[\s\S]*\}/);
-          if (match) {
-            resultadoParsed = JSON.parse(match[0]);
-          } else {
+          const matchArray = respostaTexto.match(/\[[\s\S]*\]/);
+          if (matchArray) {
+            try {
+              resultadoParsed = JSON.parse(matchArray[0]);
+            } catch (errArray) {}
+          }
+          if (!resultadoParsed) {
+            const matchObj = respostaTexto.match(/\{[\s\S]*\}/);
+            if (matchObj) {
+              try {
+                resultadoParsed = JSON.parse(matchObj[0]);
+              } catch (errObj) {}
+            }
+          }
+          if (!resultadoParsed) {
             throw new Error('Falha ao processar JSON da resposta da IA');
           }
         }
