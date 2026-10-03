@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const currentKeyMasked = document.getElementById('current-key-masked');
   const statusIndicatorDot = document.getElementById('status-indicator-dot');
   const headerStatusBadge = document.getElementById('header-status-badge');
+  const apiProviderSelect = document.getElementById('api-provider-select');
 
   let activeApiKey = null;
 
@@ -39,10 +40,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Atualiza a exibição de status da chave
-  function atualizarStatusVisual(chave) {
+  function atualizarStatusVisual(chave, provedor = 'gemini') {
     if (chave && chave !== 'SUA_CHAVE_API_AQUI') {
       activeApiKey = chave;
-      currentKeyMasked.innerText = mascararChave(chave);
+      currentKeyMasked.innerText = mascararChave(chave) + ` (${provedor})`;
       statusIndicatorDot.className = 'dot dot-ok';
       statusIndicatorDot.title = 'Chave configurada e ativa';
       headerStatusBadge.className = 'badge badge-active';
@@ -60,26 +61,42 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Carrega configurações salvas
   async function carregarConfiguracoes() {
     // 1. Storage local da extensão
-    const storageData = await chrome.storage.local.get(['geminiApiKey', 'htbAutoTranslate']);
+    const storageData = await chrome.storage.local.get(['geminiApiKey', 'claudeApiKey', 'apiProvider', 'htbAutoTranslate']);
     
     // Auto-tradução padrão: ativada (true)
     const autoTranslateAtivo = storageData.htbAutoTranslate !== undefined ? !!storageData.htbAutoTranslate : true;
     autoTranslateToggle.checked = autoTranslateAtivo;
 
-    if (storageData.geminiApiKey && storageData.geminiApiKey.trim() !== '') {
-      atualizarStatusVisual(storageData.geminiApiKey.trim());
+    const provider = storageData.apiProvider || 'gemini';
+    apiProviderSelect.value = provider;
+
+    let chaveAtiva = null;
+    if (provider === 'gemini' && storageData.geminiApiKey && storageData.geminiApiKey.trim() !== '') {
+      chaveAtiva = storageData.geminiApiKey.trim();
+    } else if (provider === 'claude' && storageData.claudeApiKey && storageData.claudeApiKey.trim() !== '') {
+      chaveAtiva = storageData.claudeApiKey.trim();
+    }
+
+    if (chaveAtiva) {
+      atualizarStatusVisual(chaveAtiva, provider);
       return;
     }
 
     // 2. Se não estiver no storage, consulta o background service worker (ex: config.js fallback)
     chrome.runtime.sendMessage({ action: 'ping' }, (response) => {
       if (response && response.hasKey) {
-        atualizarStatusVisual('AIzaSyConfigLocalChaveAtiva1234');
+        atualizarStatusVisual('AIzaSyConfigLocalChaveAtiva1234', provider);
       } else {
-        atualizarStatusVisual(null);
+        atualizarStatusVisual(null, provider);
       }
     });
   }
+
+  apiProviderSelect.addEventListener('change', async (e) => {
+    const provider = e.target.value;
+    await chrome.storage.local.set({ apiProvider: provider });
+    await carregarConfiguracoes();
+  });
 
   // Alterna visualização do input de senha (asterisco / texto puro)
   toggleVisibilityBtn.addEventListener('click', () => {
@@ -97,6 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Salva a nova chave
   btnSaveKey.addEventListener('click', async () => {
     const novaChave = apiKeyInput.value.trim();
+    const provider = apiProviderSelect.value;
 
     if (!novaChave) {
       mostrarFeedback('Por favor, insira ou cole a chave de API.', 'error');
@@ -113,8 +131,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnSaveKey.innerText = 'Salvando...';
 
     try {
-      await chrome.storage.local.set({ geminiApiKey: novaChave });
-      atualizarStatusVisual(novaChave);
+      if (provider === 'gemini') {
+        await chrome.storage.local.set({ geminiApiKey: novaChave });
+      } else {
+        await chrome.storage.local.set({ claudeApiKey: novaChave });
+      }
+      atualizarStatusVisual(novaChave, provider);
       apiKeyInput.value = '';
       mostrarFeedback('✓ Nova chave de API salva com sucesso! A extensão já está utilizando-a.', 'success');
 
@@ -132,9 +154,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Testa a conexão da chave com o Google Gemini
+  // Testa a conexão da chave com a API selecionada
   btnTestKey.addEventListener('click', async () => {
     const chaveParaTestar = apiKeyInput.value.trim() || activeApiKey;
+    const provider = apiProviderSelect.value;
 
     if (!chaveParaTestar) {
       mostrarFeedback('Nenhuma chave fornecida ou ativa para testar.', 'error');
@@ -144,21 +167,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     btnTestKey.disabled = true;
     headerStatusBadge.className = 'badge badge-loading';
     headerStatusBadge.innerText = 'Testando...';
-    mostrarFeedback('⏳ Testando conexão com a API do Google Gemini...', 'info', 0);
+    mostrarFeedback(`⏳ Testando conexão com a API do ${provider === 'gemini' ? 'Google Gemini' : 'Anthropic Claude'}...`, 'info', 0);
 
     try {
-      const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${chaveParaTestar}`);
-      const dados = await resp.json();
+      if (provider === 'gemini') {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${chaveParaTestar}`);
+        const dados = await resp.json();
 
-      if (resp.ok && dados.models) {
-        mostrarFeedback('✓ Conexão bem-sucedida! Chave válida e modelos Gemini disponíveis.', 'success', 6000);
-        headerStatusBadge.className = 'badge badge-active';
-        headerStatusBadge.innerText = 'Ativa';
+        if (resp.ok && dados.models) {
+          mostrarFeedback('✓ Conexão bem-sucedida! Chave válida e modelos Gemini disponíveis.', 'success', 6000);
+          headerStatusBadge.className = 'badge badge-active';
+          headerStatusBadge.innerText = 'Ativa';
+        } else {
+          const msgErro = dados.error?.message || 'Chave rejeitada pela API do Google.';
+          mostrarFeedback(`✗ Falha na autenticação: ${msgErro}`, 'error', 7000);
+          headerStatusBadge.className = 'badge badge-idle';
+          headerStatusBadge.innerText = 'Inválida';
+        }
       } else {
-        const msgErro = dados.error?.message || 'Chave rejeitada pela API do Google.';
-        mostrarFeedback(`✗ Falha na autenticação: ${msgErro}`, 'error', 7000);
-        headerStatusBadge.className = 'badge badge-idle';
-        headerStatusBadge.innerText = 'Inválida';
+        // Testando a API do Claude
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': chaveParaTestar,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: "claude-3-haiku-20240307",
+            max_tokens: 1,
+            messages: [{role: "user", content: "ping"}]
+          })
+        });
+
+        if (resp.ok) {
+          mostrarFeedback('✓ Conexão bem-sucedida! Chave válida e modelos Claude disponíveis.', 'success', 6000);
+          headerStatusBadge.className = 'badge badge-active';
+          headerStatusBadge.innerText = 'Ativa';
+        } else {
+          const dados = await resp.json();
+          const msgErro = dados.error?.message || 'Chave rejeitada pela API do Anthropic.';
+          mostrarFeedback(`✗ Falha na autenticação: ${msgErro}`, 'error', 7000);
+          headerStatusBadge.className = 'badge badge-idle';
+          headerStatusBadge.innerText = 'Inválida';
+        }
       }
     } catch (err) {
       mostrarFeedback(`✗ Erro de rede ao conectar à API: ${err.message}`, 'error', 6000);

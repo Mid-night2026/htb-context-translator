@@ -31,12 +31,20 @@
 
     <!-- Formulário da Chave de API -->
     <section class="card">
+      <div class="card-label">Provedor de IA</div>
+      <div class="input-group" style="margin-bottom: 12px;">
+        <select id="api-provider-select" style="width: 100%; border-radius: 6px; padding: 8px; font-family: monospace; background: #1a1a2e; color: #fff; border: 1px solid #333;">
+          <option value="gemini">Google Gemini</option>
+          <option value="claude">Anthropic Claude</option>
+        </select>
+      </div>
+
       <div class="card-label">Configurar Nova Chave de API</div>
       <div class="input-group">
         <input 
           type="password" 
           id="api-key-input" 
-          placeholder="Insira sua chave (AIzaSy...)" 
+          placeholder="Insira sua chave (AIzaSy... ou sk-ant-...)"
           autocomplete="off" 
           spellcheck="false"
         >
