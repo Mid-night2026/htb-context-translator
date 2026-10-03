@@ -7,21 +7,32 @@ try {
 
 const api = globalThis.chrome || globalThis.browser;
 
-// Recupera a API key do storage da extensão ou fallback config.js
-async function obterApiKey() {
+// Recupera configurações do storage da extensão
+async function obterConfiguracoes() {
+  let config = { provider: 'gemini', apiKey: null };
   if (api && api.storage && api.storage.local) {
-    const data = await api.storage.local.get(['geminiApiKey', 'htbApiKey']);
-    if (data.geminiApiKey && data.geminiApiKey.trim() !== '') {
-      return data.geminiApiKey.trim();
-    }
-    if (data.htbApiKey && data.htbApiKey.trim() !== '') {
-      return data.htbApiKey.trim();
+    const data = await api.storage.local.get(['geminiApiKey', 'claudeApiKey', 'apiProvider', 'htbApiKey']);
+    config.provider = data.apiProvider || 'gemini';
+
+    if (config.provider === 'gemini') {
+      if (data.geminiApiKey && data.geminiApiKey.trim() !== '') {
+        config.apiKey = data.geminiApiKey.trim();
+      } else if (data.htbApiKey && data.htbApiKey.trim() !== '') {
+        config.apiKey = data.htbApiKey.trim();
+      }
+    } else if (config.provider === 'claude') {
+      if (data.claudeApiKey && data.claudeApiKey.trim() !== '') {
+        config.apiKey = data.claudeApiKey.trim();
+      }
     }
   }
-  if (typeof CONFIG !== 'undefined' && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'SUA_CHAVE_API_AQUI') {
-    return CONFIG.GEMINI_API_KEY.trim();
+
+  if (!config.apiKey && typeof CONFIG !== 'undefined' && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== 'SUA_CHAVE_API_AQUI') {
+    config.provider = 'gemini';
+    config.apiKey = CONFIG.GEMINI_API_KEY.trim();
   }
-  return null;
+
+  return config;
 }
 
 // Prompt especializado em Cibersegurança do HTB Academy
@@ -64,12 +75,7 @@ REGRAS CRÍTICAS DE TRADUÇÃO:
    }`;
 
 // Chama o Google Gemini com os modelos oficiais rápidos
-async function chamarGemini(payload, customGlossary = '') {
-  const apiKey = await obterApiKey();
-  if (!apiKey) {
-    throw new Error('Chave de API do Gemini não configurada. Configure no popup da extensão.');
-  }
-
+async function chamarGemini(apiKey, payload, customGlossary = '') {
   const modelos = ['gemini-1.5-flash', 'gemini-1.5-flash-8b'];
   let sysInstructionText = SYSTEM_PROMPT;
   if (customGlossary && customGlossary.trim()) {
@@ -83,11 +89,11 @@ async function chamarGemini(payload, customGlossary = '') {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
 
       const corpo = {
-        system_instruction: { parts: [{ text: sysInstructionText }] },
+        systemInstruction: { parts: [{ text: sysInstructionText }] },
         contents: [{ parts: [{ text: payload }] }],
         generationConfig: {
           temperature: 0.1,
-          response_mime_type: 'application/json'
+          responseMimeType: 'application/json'
         }
       };
 
@@ -118,24 +124,82 @@ async function chamarGemini(payload, customGlossary = '') {
   throw ultimoErro || new Error('Não foi possível obter resposta da API Gemini.');
 }
 
+// Chama o Anthropic Claude
+async function chamarClaude(apiKey, payload, customGlossary = '') {
+  let sysInstructionText = SYSTEM_PROMPT;
+  if (customGlossary && customGlossary.trim()) {
+    sysInstructionText += `\n\nGLOSSÁRIO OBRIGATÓRIO DO USUÁRIO (NUNCA TRADUZA ESTES TERMOS): ${customGlossary.trim()}`;
+  }
+
+  // Usar pre-fill para forçar a saída JSON
+  sysInstructionText += '\n\nResponda estritamente com o objeto JSON sem marcadores de markdown.';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 4096,
+        system: sysInstructionText,
+        messages: [
+          { role: 'user', content: payload }
+        ],
+        temperature: 0.1
+      })
+    });
+
+    const data = await resp.json();
+
+    if (data.error) {
+      throw new Error(data.error.message);
+    }
+
+    if (data.content && data.content.length > 0 && data.content[0].text) {
+      return data.content[0].text;
+    }
+
+    throw new Error('Formato de resposta inesperado da API Claude');
+  } catch (e) {
+    console.warn(`[HTB-Translator] Falha na chamada ao Claude:`, e.message);
+    throw e;
+  }
+}
+
 // Ouvinte de mensagens da extensão
 api.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'translate_batch') {
     (async () => {
       try {
+        const config = await obterConfiguracoes();
+        if (!config.apiKey) {
+          throw new Error('Chave de API não configurada. Configure no popup da extensão.');
+        }
+
         const itensParaEnviar = request.items.map(it => ({
           id: it.id,
           text: it.text
         }));
 
         const jsonPrompt = JSON.stringify(itensParaEnviar);
-        const respostaTexto = await chamarGemini(jsonPrompt, request.glossary || '');
+        let respostaTexto;
+
+        if (config.provider === 'claude') {
+          respostaTexto = await chamarClaude(config.apiKey, jsonPrompt, request.glossary || '');
+        } else {
+          respostaTexto = await chamarGemini(config.apiKey, jsonPrompt, request.glossary || '');
+        }
 
         let resultadoParsed;
         try {
           resultadoParsed = JSON.parse(respostaTexto);
         } catch (e) {
-          const match = respostaTexto.match(/\{[\s\S]*\}/);
+          const match = respostaTexto.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
           if (match) {
             resultadoParsed = JSON.parse(match[0]);
           } else {
@@ -158,8 +222,8 @@ api.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'ping') {
     (async () => {
-      const key = await obterApiKey();
-      sendResponse({ success: true, hasKey: !!key });
+      const config = await obterConfiguracoes();
+      sendResponse({ success: true, hasKey: !!config.apiKey });
     })();
     return true;
   }
